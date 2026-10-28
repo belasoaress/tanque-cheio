@@ -1,0 +1,30 @@
+# Configuração do tanque-cheio. Caminhos relativos partem da raiz do repositório.
+
+[paths]
+data_dir = "data"
+raw_dir = "data/raw"
+parquet_dir = "data/parquet"
+db_path = "data/tanque.duckdb"
+manifest = "data/manifest.json"
+datasets_dir = "datasets"
+results_dir = "results"
+predictions_dir = "results/predictions"
+spend_ledger = "results/spend.jsonl"
+pricing = "configs/pricing.toml"
+
+[data]
+# Preenchido no M1: 24 meses mais recentes disponíveis no início do M1.
+period_start = ""  # "AAAA-MM"
+period_end = ""    # "AAAA-MM"
+source_urls = []   # URLs dos CSVs da ANP
+
+[execution]
+timeout_s = 10
+max_rows = 1000
+
+[splits]
+dev = 50
+test = 150
+
+[budget]
+budget_usd = 10.0

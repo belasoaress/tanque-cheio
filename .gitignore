@@ -1,0 +1,30 @@
+# Segredos
+.env
+.env.*
+!.env.example
+
+# Dados locais (o snapshot é gerado por `tanque data build`)
+data/*
+!data/manifest.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+
+# Caches de ferramentas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Editores e SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,48 @@
+# Preços oficiais dos modelos Claude usados no projeto (US$ por milhão de tokens).
+# Fonte: https://platform.claude.com/docs/en/about-claude/pricing
+#   (destino do redirecionamento de https://docs.claude.com/en/docs/about-claude/pricing)
+# IDs da API: https://platform.claude.com/docs/en/about-claude/models/overview
+# Consultado em 2026-10-28.
+#
+# Este é o ÚNICO arquivo do código com IDs de modelo e preços.
+# O código se refere aos modelos pelas chaves curtas abaixo ("cheap", "frontier").
+#
+# cache_write_per_mtok = escrita no cache de 5 minutos (1,25x a entrada);
+# cache_write_1h_per_mtok = escrita no cache de 1 hora (2x), só informativo.
+# batch_discount = desconto da Batch API sobre todos os componentes; ele se
+# acumula com os multiplicadores de cache.
+
+[models.cheap]
+# Modelo atual mais barato da Claude (não depreciado).
+id = "claude-haiku-5-5"
+name = "Claude Haiku 5.5"
+input_per_mtok = 0.10
+output_per_mtok = 0.50
+cache_write_per_mtok = 0.125
+cache_write_1h_per_mtok = 0.20
+cache_read_per_mtok = 0.01
+batch_discount = 0.5
+source_url = "https://platform.claude.com/docs/en/about-claude/pricing"
+retrieved_on = 2026-10-28
+
+[models.cheap.long_context]
+# Prompts acima de 100.000 tokens (entrada + leitura + escrita de cache) pagam mais.
+threshold_tokens = 100000
+input_per_mtok = 0.50
+output_per_mtok = 2.50
+cache_write_per_mtok = 0.625
+cache_read_per_mtok = 0.05
+
+[models.frontier]
+# Modelo de fronteira atual com disponibilidade geral (o Mythos 5.1, mesmo
+# preço, tem acesso limitado).
+id = "claude-fable-5-1"
+name = "Claude Fable 5.1"
+input_per_mtok = 10.00
+output_per_mtok = 50.00
+cache_write_per_mtok = 12.50
+cache_write_1h_per_mtok = 20.00
+cache_read_per_mtok = 0.25
+batch_discount = 0.5
+source_url = "https://platform.claude.com/docs/en/about-claude/pricing"
+retrieved_on = 2026-10-28
