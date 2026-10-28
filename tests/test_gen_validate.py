@@ -1,6 +1,6 @@
 import pytest
-from m4_fakes import make_toy_db
 
+from m4_fakes import make_toy_db
 from tanque.gen import validate
 from tanque.sql.execute import ExecResult
 
@@ -28,7 +28,9 @@ def test_valid_pair_becomes_train_example(m4_db):
     res = run_one(m4_db, pair("Qual o preço médio da gasolina em SP?", sql, order_matters=False))
     assert res.discarded == []
     (item,) = res.valid
-    assert item["sql"] == (f"SELECT AVG(c.valor_venda) {J} WHERE m.uf = 'SP' AND c.produto = 'GASOLINA'")
+    assert item["sql"] == (
+        f"SELECT AVG(c.valor_venda) {J} WHERE m.uf = 'SP' AND c.produto = 'GASOLINA'"
+    )
     assert item["difficulty"] == "facil"
     assert item["split"] == "train" and item["source"] == "synthetic"
     assert item["reviewed"] is False and item["uses_window"] is False
@@ -54,7 +56,10 @@ def test_normalize_spaces_keeps_string_literals():
         (pair("Q?", "DROP TABLE coletas"), "guardrail"),
         (pair("Q?", "SELECT coluna_que_nao_existe FROM coletas"), "erro_execucao"),
         (pair("Q?", "SELECT * FROM coletas WHERE produto = 'GLP'"), "resultado_vazio"),
-        (pair("Q?", "SELECT AVG(valor_venda) FROM coletas WHERE produto = 'GNV'"), "resultado_nulo"),
+        (
+            pair("Q?", "SELECT AVG(valor_venda) FROM coletas WHERE produto = 'GNV'"),
+            "resultado_nulo",
+        ),
     ],
 )
 def test_discard_reasons(m4_db, p, reason):

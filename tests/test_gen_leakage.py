@@ -2,8 +2,8 @@ import random
 import time
 
 import pytest
-from m4_fakes import write_jsonl
 
+from m4_fakes import write_jsonl
 from tanque.gen import leakage
 
 
@@ -53,7 +53,10 @@ def test_sql_collision_even_with_different_question():
 
 def test_remove_leaks_keeps_clean_items():
     ref = [item(0, "Qual o preço médio do GNV no Brasil?", "SELECT 2")]
-    train = [item(1, "qual o preço médio do gnv no brasil"), item(2, "Ranking de bairros de Recife")]
+    train = [
+        item(1, "qual o preço médio do gnv no brasil"),
+        item(2, "Ranking de bairros de Recife"),
+    ]
     kept, leaks = leakage.remove_leaks(train, ref)
     assert [k["id"] for k in kept] == ["x-2"]
     assert len(leaks) == 1

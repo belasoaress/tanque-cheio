@@ -53,7 +53,7 @@ KIND = "gen"
 MODEL_KEY = "cheap"
 PAIRS_PER_REQUEST = 10
 PILOT_REQUESTS = 20
-DEFAULT_MAX_TOKENS = 16000
+DEFAULT_MAX_TOKENS = 8000
 DEFAULT_EFFORT = "low"
 # Saída esperada por requisição (10 pares + raciocínio em esforço baixo); só para
 # a estimativa. A estimativa de pior caso usa `max_tokens`.

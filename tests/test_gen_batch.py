@@ -3,8 +3,8 @@ import re
 from decimal import Decimal
 
 import pytest
-from m4_fakes import FakeClient, make_toy_db, read_jsonl
 
+from m4_fakes import FakeClient, make_toy_db, read_jsonl
 from tanque.budget import BudgetExceededError, Ledger, cost_usd
 from tanque.gen import batch
 from tanque.infer import api
