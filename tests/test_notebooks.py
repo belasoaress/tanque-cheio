@@ -146,6 +146,16 @@ def test_finetune_notebook_uses_the_package_and_never_the_test_set():
             assert cell["outputs"] == [] and cell["execution_count"] is None
 
 
+def test_finetune_uses_a_single_gpu_before_importing_torch():
+    # O Kaggle pode dar 2 T4; o SFTTrainer recusa DataParallel.
+    cells = [
+        source(c) for c in load_notebook("02_finetune.ipynb")["cells"] if c["cell_type"] == "code"
+    ]
+    pin = next(i for i, c in enumerate(cells) if 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"' in c)
+    first_torch = next(i for i, c in enumerate(cells) if "import torch" in c)
+    assert pin < first_torch
+
+
 def locked_versions() -> dict[str, str]:
     lock = config.resolve_path("uv.lock").read_text(encoding="utf-8")
     return dict(re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', lock))
