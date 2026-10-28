@@ -24,8 +24,8 @@ kernels ficam **privados**: só viram públicos no M6, com aprovação.
 
 1. Aprovar os candidatos em `results/bakeoff-candidates.md`. A lista está em
    `CANDIDATES`, na primeira célula de `01_bakeoff.ipynb`.
-2. Conferir `REPO_REF` na primeira célula: `m5-bakeoff` enquanto o PR não entra. Depois
-   do merge, use `main` ou, melhor, o commit exato.
+2. Conferir `REPO_REF` na primeira célula: o padrão é `main`. Para uma execução
+   reproduzível, troque pelo commit exato.
 3. A conta do Kaggle precisa ter o **telefone verificado**, ou o Kaggle não libera GPU
    nem internet.
 4. Se o seu usuário do Kaggle **não** for `belasoaress`, troque o dono no campo `id` dos
