@@ -1,10 +1,11 @@
-"""Comandos `tanque eval`: verificação das SQLs de referência, métricas e relatório (M2, M3, M7)."""
+"""Comandos `tanque eval`: SQLs de referência, métricas, relatório e bake-off (M2, M3, M5, M7)."""
 
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from tanque.eval import bakeoff as bakeoff_mod
 from tanque.eval import report as report_mod
 from tanque.eval import score as score_mod
 from tanque.sql import execute
@@ -96,3 +97,20 @@ def report(
         metrics or score_mod.default_metrics_path(), out or report_mod.default_report_path()
     )
     typer.echo(f"Relatório gravado em {path}")
+
+
+@app.command("bakeoff")
+def bakeoff(
+    metrics: Annotated[
+        Path | None,
+        typer.Option(help="Arquivo de métricas (padrão: results/metrics.json)."),
+    ] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="Documento do bake-off (padrão: results/bakeoff.md).")
+    ] = None,
+) -> None:
+    """Atualiza a tabela dos modelos base no dev em results/bakeoff.md (M5)."""
+    path = bakeoff_mod.write_bakeoff(
+        metrics or score_mod.default_metrics_path(), out or bakeoff_mod.default_bakeoff_path()
+    )
+    typer.echo(f"Tabela do bake-off gravada em {path}")
