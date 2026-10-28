@@ -44,7 +44,9 @@ ALLOWED_TABLE_FUNCTIONS: frozenset[str] = frozenset({"range", "generate_series",
 # Funções escalares bloqueadas mesmo fora do FROM.
 _BLOCKED_FUNCTION_RE = re.compile(
     r"^(read_\w*|\w*_scan|glob|sniff_csv|getenv|query|query_table|parquet_\w+|"
-    r"iceberg_\w+|delta_\w+|load_\w+|install_\w+)$"
+    r"iceberg_\w+|delta_\w+|load_\w+|install_\w+|"
+    # Introspecção de configuração e catálogo: vazaria caminhos do servidor.
+    r"current_setting|getvariable|which_secret|duckdb_\w+|pragma_\w+)$"
 )
 
 _IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
