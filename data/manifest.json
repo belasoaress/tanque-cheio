@@ -1,0 +1,548 @@
+{
+  "capitais": 27,
+  "coletas_valor_venda_nao_positivo": 0,
+  "generated_at": "2026-10-28T10:44:04Z",
+  "manifest_version": 1,
+  "period": {
+    "data_max": "2026-09-30",
+    "data_min": "2024-10-01",
+    "data_referencia": "2026-09-30",
+    "months": 24
+  },
+  "produtos": {
+    "DIESEL": 178554,
+    "DIESEL S10": 299686,
+    "ETANOL": 366283,
+    "GASOLINA": 434869,
+    "GASOLINA ADITIVADA": 337483,
+    "GNV": 35687
+  },
+  "raw_files": [
+    {
+      "bytes": 8332084,
+      "encoding": "utf-8",
+      "name": "anp_2024-10_gasolina-etanol.csv",
+      "rows_accepted": 48777,
+      "rows_read": 48777,
+      "rows_rejected": {},
+      "sha256": "f88964668393c37ec611e15dd16023e7530fd8dafa15f42529903a0a1062adc6",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-10.csv"
+    },
+    {
+      "bytes": 3808687,
+      "encoding": "utf-8",
+      "name": "anp_2024-10_diesel-gnv.csv",
+      "rows_accepted": 22521,
+      "rows_read": 22521,
+      "rows_rejected": {},
+      "sha256": "ec16cc74e2771f2d37f0cc761308010ac0e2c5bb57ca96c40cdd138d7c0d6d3a",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-10.csv"
+    },
+    {
+      "bytes": 7259656,
+      "encoding": "utf-8",
+      "name": "anp_2024-11_gasolina-etanol.csv",
+      "rows_accepted": 42360,
+      "rows_read": 42360,
+      "rows_rejected": {},
+      "sha256": "cb0543f8d9a86b5aa32287224e29313b1ab83c7816265f5d26e569bc40e637f5",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-11.csv"
+    },
+    {
+      "bytes": 3283999,
+      "encoding": "utf-8",
+      "name": "anp_2024-11_diesel-gnv.csv",
+      "rows_accepted": 19326,
+      "rows_read": 19326,
+      "rows_rejected": {},
+      "sha256": "e6d3683f0d27174d979bab7a7db1f289bfc3015ad34a36511ac43da998047d38",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-11.csv"
+    },
+    {
+      "bytes": 8321090,
+      "encoding": "utf-8",
+      "name": "anp_2024-12_gasolina-etanol.csv",
+      "rows_accepted": 48620,
+      "rows_read": 48620,
+      "rows_rejected": {},
+      "sha256": "31bc3111ee4ed73395da07f579c686718dbfa9b2b4d05663ffd31e01b407cc1a",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-12.csv"
+    },
+    {
+      "bytes": 3752292,
+      "encoding": "utf-8",
+      "name": "anp_2024-12_diesel-gnv.csv",
+      "rows_accepted": 22111,
+      "rows_read": 22111,
+      "rows_rejected": {},
+      "sha256": "32245601e097c0c2ae4bc2e0e16c67e0a39abf6351178bfe2fdab53661755ef3",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-12.csv"
+    },
+    {
+      "bytes": 7966791,
+      "encoding": "utf-8",
+      "name": "anp_2025-01_gasolina-etanol.csv",
+      "rows_accepted": 46509,
+      "rows_read": 46509,
+      "rows_rejected": {},
+      "sha256": "3bea9fa0b582108a2b0171e601c1124f4a4571117fa25a3820215a53f05c5699",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-01.csv"
+    },
+    {
+      "bytes": 3617645,
+      "encoding": "utf-8",
+      "name": "anp_2025-01_diesel-gnv.csv",
+      "rows_accepted": 21307,
+      "rows_read": 21307,
+      "rows_rejected": {},
+      "sha256": "689c16e1fe9f1bb84b1fc74f959547b3530f4372adbfb48aa4eb6b688c3e2533",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-01.csv"
+    },
+    {
+      "bytes": 7577300,
+      "encoding": "utf-8",
+      "name": "anp_2025-02_gasolina-etanol.csv",
+      "rows_accepted": 44290,
+      "rows_read": 44290,
+      "rows_rejected": {},
+      "sha256": "204e0e4c689b225fa26ae4ce35db4cd98582f38979cdbf1bf81022f0f7bd1a92",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-02.csv"
+    },
+    {
+      "bytes": 3426796,
+      "encoding": "utf-8",
+      "name": "anp_2025-02_diesel-gnv.csv",
+      "rows_accepted": 20216,
+      "rows_read": 20216,
+      "rows_rejected": {},
+      "sha256": "8cabc974d0aef5f28699c4ae12ada2c40ab0e44474271ef11e4b19a7a37ca2f4",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-02.csv"
+    },
+    {
+      "bytes": 8839948,
+      "encoding": "utf-8",
+      "name": "anp_2025-03_gasolina-etanol.csv",
+      "rows_accepted": 51685,
+      "rows_read": 51685,
+      "rows_rejected": {},
+      "sha256": "1da897c11efba75049cdb063b8ed03ba0e299af19b520845e4943afce67bb6e5",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-03.csv"
+    },
+    {
+      "bytes": 3999849,
+      "encoding": "utf-8",
+      "name": "anp_2025-03_diesel-gnv.csv",
+      "rows_accepted": 23580,
+      "rows_read": 23580,
+      "rows_rejected": {},
+      "sha256": "6250fc3bfab38466a25f4afca49814f1101948133ef90bf38baa7347dfc4a81d",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-03.csv"
+    },
+    {
+      "bytes": 8492713,
+      "encoding": "utf-8",
+      "name": "anp_2025-04_gasolina-etanol.csv",
+      "rows_accepted": 49626,
+      "rows_read": 49626,
+      "rows_rejected": {},
+      "sha256": "7510baecec67c2cf0347b29b9cc11f5b6b4d972a97310aae81c11b40ab2a2a40",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-04.csv"
+    },
+    {
+      "bytes": 3833238,
+      "encoding": "utf-8",
+      "name": "anp_2025-04_diesel-gnv.csv",
+      "rows_accepted": 22618,
+      "rows_read": 22618,
+      "rows_rejected": {},
+      "sha256": "92b9ade71646e930b898f3785d6538c4bcf381d9063c7945e1de516e884b62e7",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-04.csv"
+    },
+    {
+      "bytes": 8028098,
+      "encoding": "utf-8",
+      "name": "anp_2025-05_gasolina-etanol.csv",
+      "rows_accepted": 46910,
+      "rows_read": 46910,
+      "rows_rejected": {},
+      "sha256": "2ffe0032a1bf2269e7e5968cca6d6809ac611b636b60cb69481a19d1d340d001",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-05.csv"
+    },
+    {
+      "bytes": 3618593,
+      "encoding": "utf-8",
+      "name": "anp_2025-05_diesel-gnv.csv",
+      "rows_accepted": 21329,
+      "rows_read": 21329,
+      "rows_rejected": {},
+      "sha256": "db0172e4673815d7b3c1ded9f45c2ecb7a619f1de703394b74ebae4416b71d8d",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-05.csv"
+    },
+    {
+      "bytes": 8549806,
+      "encoding": "utf-8",
+      "name": "anp_2025-06_gasolina-etanol.csv",
+      "rows_accepted": 49976,
+      "rows_read": 49976,
+      "rows_rejected": {},
+      "sha256": "fe15be9a870995f14ecdff291c969bfb4a9f36d284aa463f65332d5e0b5d1615",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-06.csv"
+    },
+    {
+      "bytes": 3795693,
+      "encoding": "utf-8",
+      "name": "anp_2025-06_diesel-gnv.csv",
+      "rows_accepted": 22363,
+      "rows_read": 22363,
+      "rows_rejected": {},
+      "sha256": "f260a6c8b67377484f18147eb793e42e9340483090eda8e233c77c8183f2987f",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-06.csv"
+    },
+    {
+      "bytes": 7731648,
+      "encoding": "utf-8",
+      "name": "anp_2025-07_gasolina-etanol.csv",
+      "rows_accepted": 45181,
+      "rows_read": 45181,
+      "rows_rejected": {},
+      "sha256": "ebbb4733feca68937d2342ab4d6d26600c2d4b0f45287e9587f5a15f475e2ea1",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-07.csv"
+    },
+    {
+      "bytes": 3414799,
+      "encoding": "utf-8",
+      "name": "anp_2025-07_diesel-gnv.csv",
+      "rows_accepted": 20135,
+      "rows_read": 20135,
+      "rows_rejected": {},
+      "sha256": "6d6b51f355f033a240d23ee3883f9216a2af2771a32628ddd9739697facfebef",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-07.csv"
+    },
+    {
+      "bytes": 6447464,
+      "encoding": "utf-8",
+      "name": "anp_2025-08_gasolina-etanol.csv",
+      "rows_accepted": 37623,
+      "rows_read": 37623,
+      "rows_rejected": {},
+      "sha256": "e474f90675c74d9aa882aaafbe56cf38d827a3f4120fe379a3b58ffed9e134f7",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-08.csv"
+    },
+    {
+      "bytes": 2769915,
+      "encoding": "utf-8",
+      "name": "anp_2025-08_diesel-gnv.csv",
+      "rows_accepted": 16299,
+      "rows_read": 16299,
+      "rows_rejected": {},
+      "sha256": "eb9bb363c03aae46cadefff5ee087d4958016d9cd259acec9e35ad08041f743b",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-08.csv"
+    },
+    {
+      "bytes": 7706344,
+      "encoding": "utf-8",
+      "name": "anp_2025-09_gasolina-etanol.csv",
+      "rows_accepted": 44955,
+      "rows_read": 44955,
+      "rows_rejected": {},
+      "sha256": "7431c90fc4f8eea19737c65a43fdff6fa2ce1e040e8312fbad985aeb09ad78d4",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-09.csv"
+    },
+    {
+      "bytes": 3283626,
+      "encoding": "utf-8",
+      "name": "anp_2025-09_diesel-gnv.csv",
+      "rows_accepted": 19313,
+      "rows_read": 19313,
+      "rows_rejected": {},
+      "sha256": "d08e2832da1ffef548048f38cd95c33d29ce6c8e5f4b8084e48e1b9290ed2abe",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-09.csv"
+    },
+    {
+      "bytes": 7495702,
+      "encoding": "utf-8",
+      "name": "anp_2025-10_gasolina-etanol.csv",
+      "rows_accepted": 43679,
+      "rows_read": 43679,
+      "rows_rejected": {},
+      "sha256": "41c4cdbe0238a9a07bcbdff7c6fe105f232fd7231cf8fe38db37a9e022a37922",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-10.csv"
+    },
+    {
+      "bytes": 3263850,
+      "encoding": "utf-8",
+      "name": "anp_2025-10_diesel-gnv.csv",
+      "rows_accepted": 19180,
+      "rows_read": 19180,
+      "rows_rejected": {},
+      "sha256": "4eea32960a2f24124b6492d7d81ee676451d93cb565bbe43def271551a087faf",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-10.csv"
+    },
+    {
+      "bytes": 7373048,
+      "encoding": "utf-8",
+      "name": "anp_2025-11_gasolina-etanol.csv",
+      "rows_accepted": 43066,
+      "rows_read": 43066,
+      "rows_rejected": {},
+      "sha256": "ae614f047a89208dbf11a295a8d84a7d7ef6879c0fc7a508fe09da06ab46b4bd",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-11.csv"
+    },
+    {
+      "bytes": 3251568,
+      "encoding": "utf-8",
+      "name": "anp_2025-11_diesel-gnv.csv",
+      "rows_accepted": 19158,
+      "rows_read": 19158,
+      "rows_rejected": {},
+      "sha256": "02467db155c7f1ede6dae672191c0684bd25638a828b69fdf55248bdaf4f1b46",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-11.csv"
+    },
+    {
+      "bytes": 8959840,
+      "encoding": "utf-8",
+      "name": "anp_2025-12_gasolina-etanol.csv",
+      "rows_accepted": 52336,
+      "rows_read": 52336,
+      "rows_rejected": {},
+      "sha256": "9287af46589d54adcc037f7756ab663aa3d18fe5a36b510e3f947dbedb32bd21",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-12.csv"
+    },
+    {
+      "bytes": 3945034,
+      "encoding": "utf-8",
+      "name": "anp_2025-12_diesel-gnv.csv",
+      "rows_accepted": 23244,
+      "rows_read": 23244,
+      "rows_rejected": {},
+      "sha256": "8aaa1ad32e69bdfa49cf643d2f9c73f9ddeaa8b58c3e5bb52556304c51ff2c81",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-12.csv"
+    },
+    {
+      "bytes": 7740747,
+      "encoding": "utf-8",
+      "name": "anp_2026-01_gasolina-etanol.csv",
+      "rows_accepted": 45234,
+      "rows_read": 45234,
+      "rows_rejected": {},
+      "sha256": "61f0af8de0a63bb8c83bbe2b56db7d87e21155595e3795919b5bf78f231cd685",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/01-dados-abertos-precos-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 3468287,
+      "encoding": "utf-8",
+      "name": "anp_2026-01_diesel-gnv.csv",
+      "rows_accepted": 20425,
+      "rows_read": 20425,
+      "rows_rejected": {},
+      "sha256": "ed0c31554dc8d9c797d32e87d680e3c0e34ce0df65ef132714a2e47d5192c20f",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/01-dados-abertos-precos-diesel-gnv.csv"
+    },
+    {
+      "bytes": 7688074,
+      "encoding": "utf-8",
+      "name": "anp_2026-02_gasolina-etanol.csv",
+      "rows_accepted": 44927,
+      "rows_read": 44931,
+      "rows_rejected": {
+        "linha_duplicada": 4
+      },
+      "sha256": "acf24035d34d81e0301fd0d3212329c9956fb64828fd70913afb1665bca62904",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/02-cados-abertos-preco-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 3411088,
+      "encoding": "utf-8",
+      "name": "anp_2026-02_diesel-gnv.csv",
+      "rows_accepted": 20087,
+      "rows_read": 20089,
+      "rows_rejected": {
+        "linha_duplicada": 2
+      },
+      "sha256": "c7b3fa898528cde988130dad6e5f3eb811bd0abdc3905f7bf94d276a32e2caec",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/02-dados-abertos-precos-diesel-gnv.csv"
+    },
+    {
+      "bytes": 9137085,
+      "encoding": "utf-8",
+      "name": "anp_2026-03_gasolina-etanol.csv",
+      "rows_accepted": 53388,
+      "rows_read": 53388,
+      "rows_rejected": {},
+      "sha256": "cb44c7191f8c37a1df45fc89d711d5a2f89298792e41fe9fe70bb9ce9f5ef35a",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/03-dados-abertos-precos-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 4035298,
+      "encoding": "utf-8",
+      "name": "anp_2026-03_diesel-gnv.csv",
+      "rows_accepted": 23775,
+      "rows_read": 23775,
+      "rows_rejected": {},
+      "sha256": "de0b6b285bbf3d2f2704519eda40b75056345e5525cd993f325c4f9ae408a25c",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/03-dados-abertos-precos-diesel-gnv.csv"
+    },
+    {
+      "bytes": 8269617,
+      "encoding": "utf-8",
+      "name": "anp_2026-04_gasolina-etanol.csv",
+      "rows_accepted": 48319,
+      "rows_read": 48319,
+      "rows_rejected": {},
+      "sha256": "9468de6403340878f674cac70730bd390dc8053fdc3774c4505e66187dd15aae",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/04-dados-abertos-precos-gasolina-etanol"
+    },
+    {
+      "bytes": 3693417,
+      "encoding": "utf-8",
+      "name": "anp_2026-04_diesel-gnv.csv",
+      "rows_accepted": 21759,
+      "rows_read": 21759,
+      "rows_rejected": {},
+      "sha256": "06a7dede5e6eab72117e387e6520d6c3bca1e7ea66c92d3ad780d3f4099d9dde",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/04-dados-abertos-precos-diesel-gnv"
+    },
+    {
+      "bytes": 7823762,
+      "encoding": "utf-8",
+      "name": "anp_2026-05_gasolina-etanol.csv",
+      "rows_accepted": 45723,
+      "rows_read": 45723,
+      "rows_rejected": {},
+      "sha256": "ef85e71ede12bc15e67e7de62f23cd28ade56635b249e90bd1a79372a3b9c856",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/05-dados-abertos-precos-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 3548146,
+      "encoding": "utf-8",
+      "name": "anp_2026-05_diesel-gnv.csv",
+      "rows_accepted": 20900,
+      "rows_read": 20900,
+      "rows_rejected": {},
+      "sha256": "07dd058e4cf7000b7508ee7543fd9af3429496cc1f8f461945bcfc1da68ff412",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/05-dados-abertos-precos-diesel-gnv.csv"
+    },
+    {
+      "bytes": 9148908,
+      "encoding": "utf-8",
+      "name": "anp_2026-06_gasolina-etanol.csv",
+      "rows_accepted": 53454,
+      "rows_read": 53454,
+      "rows_rejected": {},
+      "sha256": "503108534947b5ad86ceabcab3ae4f3ef8bc6df0dba5b3b41e20de6bb375462b",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/06-dados-abertos-precos-2026-06-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 4146782,
+      "encoding": "utf-8",
+      "name": "anp_2026-06_diesel-gnv.csv",
+      "rows_accepted": 24421,
+      "rows_read": 24421,
+      "rows_rejected": {},
+      "sha256": "e4d85caa3f4521df3d8d567fb21e240f034a6195b8ed80cf58d0bb894208ca36",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/06-dados-abertos-precos-2026-06-diesel-gnv.csv"
+    },
+    {
+      "bytes": 8449075,
+      "encoding": "utf-8",
+      "name": "anp_2026-07_gasolina-etanol.csv",
+      "rows_accepted": 49424,
+      "rows_read": 49424,
+      "rows_rejected": {},
+      "sha256": "89b074d680a28e76a3183bd9df1bf3ad146d99a37a2df88dd2c92e80c96688a9",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/07-dados-abertos-precos-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 3841209,
+      "encoding": "utf-8",
+      "name": "anp_2026-07_diesel-gnv.csv",
+      "rows_accepted": 22625,
+      "rows_read": 22625,
+      "rows_rejected": {},
+      "sha256": "c33be03fbdbfa8e18a2b60a7100ccb120c11f358d8f50f5e9130d1fe3803b00c",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/07-dados-abertos-precos-diesel-gnv.csv"
+    },
+    {
+      "bytes": 8873275,
+      "encoding": "utf-8",
+      "name": "anp_2026-08_gasolina-etanol.csv",
+      "rows_accepted": 51856,
+      "rows_read": 51856,
+      "rows_rejected": {},
+      "sha256": "e6df13c414d93470751ccf9c2c705a1afa84904f17eb6b3c412fe11fd8ac6126",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/08-dados-abertos-precos-2026-08-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 4065822,
+      "encoding": "utf-8",
+      "name": "anp_2026-08_diesel-gnv.csv",
+      "rows_accepted": 23915,
+      "rows_read": 23915,
+      "rows_rejected": {},
+      "sha256": "c8b79829f84bec3d3cb719470f8779fc273afd238297133ca7080b1bab609424",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/08-dados-abertos-precos-2026-08-diesel-gnv.csv"
+    },
+    {
+      "bytes": 8673886,
+      "encoding": "utf-8",
+      "name": "anp_2026-09_gasolina-etanol.csv",
+      "rows_accepted": 50717,
+      "rows_read": 50717,
+      "rows_rejected": {},
+      "sha256": "ffe4f7afa10e9d405f633d3f9569c9a56e365b9a9d3d74794db800453b08c481",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/09-dados-abertos-precos-2026-09-gasolina-etanol.csv"
+    },
+    {
+      "bytes": 3963937,
+      "encoding": "utf-8",
+      "name": "anp_2026-09_diesel-gnv.csv",
+      "rows_accepted": 23320,
+      "rows_read": 23320,
+      "rows_rejected": {},
+      "sha256": "02b139c783e647c036482a6bfe4c423da8e835d4861b66b2b165da3cbf033be4",
+      "url": "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/09-dados-abertos-precos-2026-09-diesel-gnv.csv"
+    }
+  ],
+  "rows": {
+    "accepted": 1652562,
+    "read": 1652568,
+    "rejected": {
+      "linha_duplicada": 6
+    },
+    "rejected_total": 6
+  },
+  "tables": {
+    "coletas": 1652562,
+    "municipios": 419,
+    "postos": 11051
+  },
+  "ufs": [
+    "AC",
+    "AL",
+    "AM",
+    "AP",
+    "BA",
+    "CE",
+    "DF",
+    "ES",
+    "GO",
+    "MA",
+    "MG",
+    "MS",
+    "MT",
+    "PA",
+    "PB",
+    "PE",
+    "PI",
+    "PR",
+    "RJ",
+    "RN",
+    "RO",
+    "RR",
+    "RS",
+    "SC",
+    "SE",
+    "SP",
+    "TO"
+  ]
+}

@@ -28,3 +28,6 @@ htmlcov/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Worktrees de agentes do Claude Code
+.claude/worktrees/

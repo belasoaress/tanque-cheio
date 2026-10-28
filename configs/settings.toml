@@ -13,10 +13,266 @@ spend_ledger = "results/spend.jsonl"
 pricing = "configs/pricing.toml"
 
 [data]
-# Preenchido no M1: 24 meses mais recentes disponíveis no início do M1.
-period_start = ""  # "AAAA-MM"
-period_end = ""    # "AAAA-MM"
-source_urls = []   # URLs dos CSVs da ANP
+# Série histórica de preços de combustíveis automotivos da ANP (M1).
+# Fonte: https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis
+# Desde 2023 a ANP publica arquivos MENSAIS em .../arquivos/shpc/dsan/<ano>/, separados
+# em "gasolina e etanol" e "diesel e GNV" (GLP em arquivo à parte, fora do escopo).
+# Os nomes de 2026 são irregulares (ex.: "02-cados-abertos-preco-...", abril sem ".csv"),
+# por isso as URLs ficam listadas uma a uma, copiadas dos links da página oficial.
+# Os semestrais (.../shpc/dsas/ca/ca-AAAA-0S.zip) cobrem o mesmo conteúdo e não são usados.
+period_start = "2024-10"  # 24 meses mais recentes disponíveis em 28/10/2026
+period_end = "2026-09"
+granularity = "mensal"
+urls_verified = true      # links lidos da página oficial e baixados (HTTP 200) em 2026-10-28
+urls_checked_on = 2026-10-28
+license = "Dados abertos da ANP (Lei 12.527/2011; Decreto 8.777/2016), com atribuição à ANP"
+# A página do conjunto não traz o campo de licença. O espelho CKAN do catálogo
+# dados.gov.br (data.amerigeoss.org, "serie-historica-de-precos-de-combustiveis-por-revenda")
+# lista "Creative Commons Attribution"; o rodapé do gov.br (CC BY-ND 3.0) cobre o conteúdo
+# do site, não os dados. dados.gov.br não foi acessível daqui para confirmar.
+license_verified = false
+license_source = "https://data.amerigeoss.org/dataset/serie-historica-de-precos-de-combustiveis-por-revenda"
+schema_doc = "docs/schema.md"
+
+[[data.sources]]
+month = "2024-10"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-10.csv"
+
+[[data.sources]]
+month = "2024-10"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-10.csv"
+
+[[data.sources]]
+month = "2024-11"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-11.csv"
+
+[[data.sources]]
+month = "2024-11"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-11.csv"
+
+[[data.sources]]
+month = "2024-12"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-gasolina-etanol-12.csv"
+
+[[data.sources]]
+month = "2024-12"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2024/precos-diesel-gnv-12.csv"
+
+[[data.sources]]
+month = "2025-01"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-01.csv"
+
+[[data.sources]]
+month = "2025-01"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-01.csv"
+
+[[data.sources]]
+month = "2025-02"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-02.csv"
+
+[[data.sources]]
+month = "2025-02"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-02.csv"
+
+[[data.sources]]
+month = "2025-03"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-03.csv"
+
+[[data.sources]]
+month = "2025-03"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-03.csv"
+
+[[data.sources]]
+month = "2025-04"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-04.csv"
+
+[[data.sources]]
+month = "2025-04"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-04.csv"
+
+[[data.sources]]
+month = "2025-05"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-05.csv"
+
+[[data.sources]]
+month = "2025-05"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-05.csv"
+
+[[data.sources]]
+month = "2025-06"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-06.csv"
+
+[[data.sources]]
+month = "2025-06"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-06.csv"
+
+[[data.sources]]
+month = "2025-07"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-07.csv"
+
+[[data.sources]]
+month = "2025-07"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-07.csv"
+
+[[data.sources]]
+month = "2025-08"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-08.csv"
+
+[[data.sources]]
+month = "2025-08"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-08.csv"
+
+[[data.sources]]
+month = "2025-09"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-09.csv"
+
+[[data.sources]]
+month = "2025-09"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-09.csv"
+
+[[data.sources]]
+month = "2025-10"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-10.csv"
+
+[[data.sources]]
+month = "2025-10"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-10.csv"
+
+[[data.sources]]
+month = "2025-11"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-11.csv"
+
+[[data.sources]]
+month = "2025-11"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-11.csv"
+
+[[data.sources]]
+month = "2025-12"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-gasolina-etanol-12.csv"
+
+[[data.sources]]
+month = "2025-12"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2025/precos-diesel-gnv-12.csv"
+
+[[data.sources]]
+month = "2026-01"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/01-dados-abertos-precos-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-01"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/01-dados-abertos-precos-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-02"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/02-cados-abertos-preco-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-02"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/02-dados-abertos-precos-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-03"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/03-dados-abertos-precos-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-03"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/03-dados-abertos-precos-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-04"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/04-dados-abertos-precos-gasolina-etanol"
+
+[[data.sources]]
+month = "2026-04"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/04-dados-abertos-precos-diesel-gnv"
+
+[[data.sources]]
+month = "2026-05"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/05-dados-abertos-precos-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-05"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/05-dados-abertos-precos-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-06"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/06-dados-abertos-precos-2026-06-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-06"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/06-dados-abertos-precos-2026-06-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-07"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/07-dados-abertos-precos-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-07"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/07-dados-abertos-precos-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-08"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/08-dados-abertos-precos-2026-08-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-08"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/08-dados-abertos-precos-2026-08-diesel-gnv.csv"
+
+[[data.sources]]
+month = "2026-09"
+kind = "gasolina-etanol"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/09-dados-abertos-precos-2026-09-gasolina-etanol.csv"
+
+[[data.sources]]
+month = "2026-09"
+kind = "diesel-gnv"
+url = "https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/dsan/2026/09-dados-abertos-precos-2026-09-diesel-gnv.csv"
 
 [execution]
 timeout_s = 10
