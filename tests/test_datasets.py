@@ -117,7 +117,6 @@ def test_reserve_is_disjoint_and_marked():
     assert not {_norm(i["question"]) for i in reserve} & others
 
 
-@pytest.mark.xfail(strict=False, reason="aguarda revisão humana (M3, lotes 1 a 4)")
 def test_all_reviewed(split):
     _, items = split
     assert all(i["reviewed"] for i in items)
