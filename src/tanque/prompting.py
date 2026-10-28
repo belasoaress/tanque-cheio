@@ -95,6 +95,17 @@ def render_system_prompt(ddl: str, manifest: dict[str, Any]) -> str:
             "Regra dos 70%: o etanol compensa quando preço_etanol / preço_gasolina <= 0,7,",
             "com preços médios de valor_venda e gasolina = produto 'GASOLINA' (comum).",
             "",
+            "Convenções da resposta:",
+            "- Preço médio = AVG(valor_venda) das coletas, sem arredondar.",
+            "- \"gasolina\" = 'GASOLINA' e \"diesel\" = 'DIESEL' (comuns), salvo se a pergunta"
+            " disser aditivada ou S10. Sem bandeira = 'BRANCA'.",
+            "- Município: filtre sempre por nome e uf.",
+            '- Devolva só as colunas que identificam a resposta: "em quais/quais X" devolve X;'
+            " se a pergunta pede um valor ou um ranking por valor, devolva X e o valor."
+            " Município sai como nome (uma UF) ou nome, uf (várias UFs).",
+            "- Mês = date_trunc('month', data_coleta).",
+            "- Sem período na pergunta = todo o período do banco.",
+            "",
             f"Data de referência: {ref.isoformat()}",
             '"último mês" = mês do calendário que contém a data de referência '
             f"(de {month_start.isoformat()} a {ref.isoformat()}).",

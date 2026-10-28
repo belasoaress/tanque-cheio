@@ -83,6 +83,17 @@ def test_system_has_reference_date_and_last_month_rule():
     assert "mês do calendário que contém a data de referência" in system
 
 
+def test_system_has_answer_conventions_d22():
+    # D22: a convenção de colunas e de período do gold vai no prompt.
+    system = prompting.system_prompt()
+    assert "AVG(valor_venda)" in system
+    assert "nome e uf" in system
+    assert "só as colunas que identificam a resposta" in system
+    assert "Sem período na pergunta = todo o período do banco" in system
+    assert "date_trunc('month', data_coleta)" in system
+    assert "'BRANCA'" in system
+
+
 def test_system_mentions_municipio_names_upper_without_accents():
     system = prompting.system_prompt()
     assert "'SAO PAULO'" in system
