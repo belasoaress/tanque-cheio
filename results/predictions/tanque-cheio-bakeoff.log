@@ -1,0 +1,197 @@
+[{"stream_name":"stderr","time":7.2892336140000005,"data":"/usr/local/lib/python3.13/dist-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.\n"}
+,{"stream_name":"stderr","time":7.289278518,"data":"  _validate(nbdict, ref, version, version_minor, relax_add_props)\n"}
+,{"stream_name":"stderr","time":8.357193667,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":8.357229459,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":8.35723501,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":8.357239115,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stderr","time":9.037529318,"data":"0.00s - Debugger warning: It seems that frozen modules are being used, which may\n"}
+,{"stream_name":"stderr","time":9.037569556,"data":"0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off\n"}
+,{"stream_name":"stderr","time":9.037575396,"data":"0.00s - to python to disable frozen modules.\n"}
+,{"stream_name":"stderr","time":9.037579274,"data":"0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.\n"}
+,{"stream_name":"stdout","time":10.307194561,"data":"$ /usr/bin/python3 -m pip install -q tanque @ git+https://github.com/belasoaress/tanque-cheio@main transformers\u003e=4.53 accelerate peft\n"}
+,{"stream_name":"stdout","time":22.650134121,"data":"$ git clone --quiet https://github.com/belasoaress/tanque-cheio /tmp/tanque-cheio\n"}
+,{"stream_name":"stdout","time":23.491768867,"data":"$ git -C /tmp/tanque-cheio fetch --quiet origin main\n"}
+,{"stream_name":"stdout","time":23.781146071,"data":"$ git -C /tmp/tanque-cheio checkout --quiet FETCH_HEAD\n"}
+,{"stream_name":"stdout","time":23.795714189,"data":"tanque-cheio em d22b2b60d6ab44b1e6033ca79d193a88ab309944\n"}
+,{"stream_name":"stdout","time":47.0667973,"data":"torch 2.11.0+cu128 | transformers 5.16.1\n"}
+,{"stream_name":"stdout","time":47.066837571,"data":"GPU: Tesla T4\n"}
+,{"stream_name":"stdout","time":47.08492576,"data":"\n"}
+,{"stream_name":"stdout","time":47.084950682,"data":"=== Qwen/Qwen2.5-Coder-1.5B-Instruct ===\n"}
+,{"stream_name":"stderr","time":58.367077536,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stderr","time":58.367127463,"data":"\n"}
+,{"stream_name":"stderr","time":58.367134873,"data":"Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.\n"}
+,{"stream_name":"stdout","time":87.838568268,"data":"base-qwen2.5-coder-1.5b-instruct: 50 itens de dev.jsonl, kaggle-t4, float16; system como role system; modelo carregado em 39.8 s\n"}
+,{"stream_name":"stdout","time":90.537137521,"data":"[1/50] dev-0001: 2698 ms, 35 tokens\n"}
+,{"stream_name":"stdout","time":91.218574965,"data":"[2/50] dev-0002: 681 ms, 14 tokens\n"}
+,{"stream_name":"stdout","time":92.294758936,"data":"[3/50] dev-0003: 1076 ms, 25 tokens\n"}
+,{"stream_name":"stdout","time":94.018002335,"data":"[4/50] dev-0004: 1723 ms, 43 tokens\n"}
+,{"stream_name":"stdout","time":95.853095683,"data":"[5/50] dev-0005: 1835 ms, 46 tokens\n"}
+,{"stream_name":"stdout","time":97.202942963,"data":"[6/50] dev-0006: 1350 ms, 33 tokens\n"}
+,{"stream_name":"stdout","time":99.091854755,"data":"[7/50] dev-0007: 1889 ms, 48 tokens\n"}
+,{"stream_name":"stdout","time":101.324152279,"data":"[8/50] dev-0008: 2231 ms, 56 tokens\n"}
+,{"stream_name":"stdout","time":103.529313136,"data":"[9/50] dev-0009: 2205 ms, 56 tokens\n"}
+,{"stream_name":"stdout","time":105.215714706,"data":"[10/50] dev-0010: 1686 ms, 42 tokens\n"}
+,{"stream_name":"stdout","time":105.895496644,"data":"[11/50] dev-0011: 680 ms, 14 tokens\n"}
+,{"stream_name":"stdout","time":106.943595684,"data":"[12/50] dev-0012: 1048 ms, 24 tokens\n"}
+,{"stream_name":"stdout","time":108.985868039,"data":"[13/50] dev-0013: 2042 ms, 52 tokens\n"}
+,{"stream_name":"stdout","time":111.936558991,"data":"[14/50] dev-0014: 2948 ms, 76 tokens\n"}
+,{"stream_name":"stdout","time":113.722180701,"data":"[15/50] dev-0015: 1788 ms, 45 tokens\n"}
+,{"stream_name":"stdout","time":118.697088335,"data":"[16/50] dev-0016: 4975 ms, 134 tokens\n"}
+,{"stream_name":"stdout","time":121.090171131,"data":"[17/50] dev-0017: 2391 ms, 62 tokens\n"}
+,{"stream_name":"stdout","time":123.621290727,"data":"[18/50] dev-0018: 2532 ms, 66 tokens\n"}
+,{"stream_name":"stdout","time":124.476400275,"data":"[19/50] dev-0019: 855 ms, 19 tokens\n"}
+,{"stream_name":"stdout","time":127.837823698,"data":"[20/50] dev-0020: 3361 ms, 88 tokens\n"}
+,{"stream_name":"stdout","time":131.600119112,"data":"[21/50] dev-0021: 3762 ms, 98 tokens\n"}
+,{"stream_name":"stdout","time":136.730368774,"data":"[22/50] dev-0022: 5130 ms, 135 tokens\n"}
+,{"stream_name":"stdout","time":138.795948329,"data":"[23/50] dev-0023: 2065 ms, 51 tokens\n"}
+,{"stream_name":"stdout","time":141.520037006,"data":"[24/50] dev-0024: 2724 ms, 69 tokens\n"}
+,{"stream_name":"stdout","time":144.482407767,"data":"[25/50] dev-0025: 2958 ms, 77 tokens\n"}
+,{"stream_name":"stdout","time":150.114759878,"data":"[26/50] dev-0026: 5636 ms, 149 tokens\n"}
+,{"stream_name":"stdout","time":152.368657158,"data":"[27/50] dev-0027: 2253 ms, 56 tokens\n"}
+,{"stream_name":"stdout","time":156.293634825,"data":"[28/50] dev-0028: 3924 ms, 103 tokens\n"}
+,{"stream_name":"stdout","time":158.309488052,"data":"[29/50] dev-0029: 2016 ms, 50 tokens\n"}
+,{"stream_name":"stdout","time":162.595656816,"data":"[30/50] dev-0030: 4286 ms, 112 tokens\n"}
+,{"stream_name":"stdout","time":163.534505336,"data":"[31/50] dev-0031: 938 ms, 20 tokens\n"}
+,{"stream_name":"stdout","time":166.727741312,"data":"[32/50] dev-0032: 3193 ms, 81 tokens\n"}
+,{"stream_name":"stdout","time":170.220421008,"data":"[33/50] dev-0033: 3492 ms, 89 tokens\n"}
+,{"stream_name":"stdout","time":172.803327891,"data":"[34/50] dev-0034: 2583 ms, 63 tokens\n"}
+,{"stream_name":"stdout","time":173.721202405,"data":"[35/50] dev-0035: 918 ms, 19 tokens\n"}
+,{"stream_name":"stdout","time":180.795144533,"data":"[36/50] dev-0036: 7070 ms, 188 tokens\n"}
+,{"stream_name":"stdout","time":184.778554588,"data":"[37/50] dev-0037: 3987 ms, 103 tokens\n"}
+,{"stream_name":"stdout","time":189.792375731,"data":"[38/50] dev-0038: 5014 ms, 133 tokens\n"}
+,{"stream_name":"stdout","time":194.440894112,"data":"[39/50] dev-0039: 4648 ms, 122 tokens\n"}
+,{"stream_name":"stdout","time":198.423579535,"data":"[40/50] dev-0040: 3982 ms, 102 tokens\n"}
+,{"stream_name":"stdout","time":202.636066707,"data":"[41/50] dev-0041: 4212 ms, 109 tokens\n"}
+,{"stream_name":"stdout","time":207.49724303,"data":"[42/50] dev-0042: 4861 ms, 125 tokens\n"}
+,{"stream_name":"stdout","time":210.503854967,"data":"[43/50] dev-0043: 3007 ms, 75 tokens\n"}
+,{"stream_name":"stdout","time":213.585216519,"data":"[44/50] dev-0044: 3077 ms, 76 tokens\n"}
+,{"stream_name":"stdout","time":217.567010044,"data":"[45/50] dev-0045: 3985 ms, 102 tokens\n"}
+,{"stream_name":"stdout","time":221.83552137,"data":"[46/50] dev-0046: 4269 ms, 109 tokens\n"}
+,{"stream_name":"stdout","time":223.365499966,"data":"[47/50] dev-0047: 1529 ms, 36 tokens\n"}
+,{"stream_name":"stdout","time":227.648860225,"data":"[48/50] dev-0048: 4283 ms, 110 tokens\n"}
+,{"stream_name":"stdout","time":230.69060342,"data":"[49/50] dev-0049: 3042 ms, 78 tokens\n"}
+,{"stream_name":"stdout","time":233.829389538,"data":"[50/50] dev-0050: 3060 ms, 78 tokens\n"}
+,{"stream_name":"stdout","time":234.146648199,"data":"base-qwen2.5-coder-1.5b-instruct: {'n': 50, 'errors': 0, 'empty_sql': 0, 'hit_max_new_tokens': 0, 'p50_latency_ms': 2948, 'mean_input_tokens': 795.26} -\u003e /kaggle/working/base-qwen2.5-coder-1.5b-instruct__dev.jsonl\n"}
+,{"stream_name":"stdout","time":234.804361329,"data":"\n"}
+,{"stream_name":"stdout","time":234.804400802,"data":"=== Qwen/Qwen3-1.7B ===\n"}
+,{"stream_name":"stdout","time":261.390768097,"data":"base-qwen3-1.7b: 50 itens de dev.jsonl, kaggle-t4, float16; system como role system; modelo carregado em 26.4 s\n"}
+,{"stream_name":"stdout","time":262.818097631,"data":"[1/50] dev-0001: 1427 ms, 26 tokens\n"}
+,{"stream_name":"stdout","time":263.684223036,"data":"[2/50] dev-0002: 866 ms, 14 tokens\n"}
+,{"stream_name":"stdout","time":265.654656044,"data":"[3/50] dev-0003: 1970 ms, 39 tokens\n"}
+,{"stream_name":"stdout","time":267.239763649,"data":"[4/50] dev-0004: 1585 ms, 30 tokens\n"}
+,{"stream_name":"stdout","time":272.964678668,"data":"[5/50] dev-0005: 5724 ms, 122 tokens\n"}
+,{"stream_name":"stdout","time":274.292450384,"data":"[6/50] dev-0006: 1323 ms, 24 tokens\n"}
+,{"stream_name":"stdout","time":285.066307124,"data":"[7/50] dev-0007: 10778 ms, 237 tokens\n"}
+,{"stream_name":"stdout","time":294.098884513,"data":"[8/50] dev-0008: 9033 ms, 197 tokens\n"}
+,{"stream_name":"stdout","time":299.735733418,"data":"[9/50] dev-0009: 5636 ms, 121 tokens\n"}
+,{"stream_name":"stdout","time":307.678057259,"data":"[10/50] dev-0010: 7938 ms, 174 tokens\n"}
+,{"stream_name":"stdout","time":308.553927745,"data":"[11/50] dev-0011: 880 ms, 14 tokens\n"}
+,{"stream_name":"stdout","time":309.967393193,"data":"[12/50] dev-0012: 1413 ms, 26 tokens\n"}
+,{"stream_name":"stdout","time":321.433211567,"data":"[13/50] dev-0013: 11464 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":325.640437104,"data":"[14/50] dev-0014: 4207 ms, 90 tokens\n"}
+,{"stream_name":"stdout","time":333.60519803,"data":"[15/50] dev-0015: 7965 ms, 176 tokens\n"}
+,{"stream_name":"stdout","time":341.821506681,"data":"[16/50] dev-0016: 8208 ms, 181 tokens\n"}
+,{"stream_name":"stdout","time":346.018362405,"data":"[17/50] dev-0017: 4204 ms, 89 tokens\n"}
+,{"stream_name":"stdout","time":353.767672423,"data":"[18/50] dev-0018: 7749 ms, 171 tokens\n"}
+,{"stream_name":"stdout","time":360.569336702,"data":"[19/50] dev-0019: 6802 ms, 151 tokens\n"}
+,{"stream_name":"stdout","time":367.689148001,"data":"[20/50] dev-0020: 7119 ms, 156 tokens\n"}
+,{"stream_name":"stdout","time":374.548080958,"data":"[21/50] dev-0021: 6854 ms, 151 tokens\n"}
+,{"stream_name":"stdout","time":380.425493655,"data":"[22/50] dev-0022: 5882 ms, 128 tokens\n"}
+,{"stream_name":"stdout","time":389.57265596,"data":"[23/50] dev-0023: 9147 ms, 202 tokens\n"}
+,{"stream_name":"stdout","time":401.055062175,"data":"[24/50] dev-0024: 11480 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":407.101467051,"data":"[25/50] dev-0025: 6040 ms, 130 tokens\n"}
+,{"stream_name":"stdout","time":414.955049194,"data":"[26/50] dev-0026: 7861 ms, 174 tokens\n"}
+,{"stream_name":"stdout","time":419.995633995,"data":"[27/50] dev-0027: 5041 ms, 110 tokens\n"}
+,{"stream_name":"stdout","time":424.821231657,"data":"[28/50] dev-0028: 4826 ms, 104 tokens\n"}
+,{"stream_name":"stdout","time":435.43893402,"data":"[29/50] dev-0029: 10618 ms, 235 tokens\n"}
+,{"stream_name":"stdout","time":442.876683875,"data":"[30/50] dev-0030: 7429 ms, 161 tokens\n"}
+,{"stream_name":"stdout","time":444.194230461,"data":"[31/50] dev-0031: 1326 ms, 24 tokens\n"}
+,{"stream_name":"stdout","time":451.12826867,"data":"[32/50] dev-0032: 6933 ms, 139 tokens\n"}
+,{"stream_name":"stdout","time":458.742990851,"data":"[33/50] dev-0033: 7616 ms, 168 tokens\n"}
+,{"stream_name":"stdout","time":467.181395653,"data":"[34/50] dev-0034: 8438 ms, 187 tokens\n"}
+,{"stream_name":"stdout","time":469.969516922,"data":"[35/50] dev-0035: 2788 ms, 58 tokens\n"}
+,{"stream_name":"stdout","time":481.524324208,"data":"[36/50] dev-0036: 11546 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":493.020387361,"data":"[37/50] dev-0037: 11504 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":504.704427881,"data":"[38/50] dev-0038: 11684 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":512.873538013,"data":"[39/50] dev-0039: 8163 ms, 176 tokens\n"}
+,{"stream_name":"stdout","time":524.510399994,"data":"[40/50] dev-0040: 11642 ms, 256 tokens\n"}
+,{"stream_name":"stdout","time":535.344631321,"data":"[41/50] dev-0041: 10834 ms, 243 tokens\n"}
+,{"stream_name":"stdout","time":546.710305395,"data":"[42/50] dev-0042: 11360 ms, 253 tokens\n"}
+,{"stream_name":"stdout","time":553.702957452,"data":"[43/50] dev-0043: 6997 ms, 153 tokens\n"}
+,{"stream_name":"stdout","time":565.335602953,"data":"[44/50] dev-0044: 11632 ms, 254 tokens\n"}
+,{"stream_name":"stdout","time":576.883595991,"data":"[45/50] dev-0045: 11542 ms, 254 tokens\n"}
+,{"stream_name":"stdout","time":584.884238017,"data":"[46/50] dev-0046: 8007 ms, 177 tokens\n"}
+,{"stream_name":"stdout","time":586.842410069,"data":"[47/50] dev-0047: 1958 ms, 39 tokens\n"}
+,{"stream_name":"stdout","time":592.209482349,"data":"[48/50] dev-0048: 5366 ms, 115 tokens\n"}
+,{"stream_name":"stdout","time":602.057635855,"data":"[49/50] dev-0049: 9848 ms, 216 tokens\n"}
+,{"stream_name":"stdout","time":609.72660755,"data":"[50/50] dev-0050: 7569 ms, 166 tokens\n"}
+,{"stream_name":"stdout","time":609.913631662,"data":"base-qwen3-1.7b: {'n': 50, 'errors': 0, 'empty_sql': 0, 'hit_max_new_tokens': 6, 'p50_latency_ms': 7569, 'mean_input_tokens': 799.26} -\u003e /kaggle/working/base-qwen3-1.7b__dev.jsonl\n"}
+,{"stream_name":"stdout","time":609.913669944,"data":"\n"}
+,{"stream_name":"stdout","time":609.91367421,"data":"=== HuggingFaceTB/SmolLM3-3B ===\n"}
+,{"stream_name":"stdout","time":644.964699943,"data":"base-smollm3-3b: 50 itens de dev.jsonl, kaggle-t4, float16; system como role system; modelo carregado em 34.8 s\n"}
+,{"stream_name":"stderr","time":648.010747812,"data":"[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.\n"}
+,{"stream_name":"stderr","time":648.010788704,"data":"\n"}
+,{"stream_name":"stderr","time":648.010794984,"data":"[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.\n"}
+,{"stream_name":"stdout","time":648.212731288,"data":"[1/50] dev-0001: 3247 ms, 58 tokens\n"}
+,{"stream_name":"stdout","time":649.691041263,"data":"[2/50] dev-0002: 1477 ms, 24 tokens\n"}
+,{"stream_name":"stdout","time":651.961399897,"data":"[3/50] dev-0003: 2270 ms, 41 tokens\n"}
+,{"stream_name":"stdout","time":654.918221906,"data":"[4/50] dev-0004: 2957 ms, 57 tokens\n"}
+,{"stream_name":"stdout","time":659.158789455,"data":"[5/50] dev-0005: 4240 ms, 87 tokens\n"}
+,{"stream_name":"stdout","time":661.634812185,"data":"[6/50] dev-0006: 2475 ms, 45 tokens\n"}
+,{"stream_name":"stdout","time":665.7810278,"data":"[7/50] dev-0007: 4146 ms, 83 tokens\n"}
+,{"stream_name":"stdout","time":668.966517064,"data":"[8/50] dev-0008: 3185 ms, 60 tokens\n"}
+,{"stream_name":"stdout","time":672.237064353,"data":"[9/50] dev-0009: 3263 ms, 61 tokens\n"}
+,{"stream_name":"stdout","time":676.858559394,"data":"[10/50] dev-0010: 4629 ms, 90 tokens\n"}
+,{"stream_name":"stdout","time":678.200918745,"data":"[11/50] dev-0011: 1342 ms, 18 tokens\n"}
+,{"stream_name":"stdout","time":679.883550358,"data":"[12/50] dev-0012: 1683 ms, 25 tokens\n"}
+,{"stream_name":"stdout","time":684.320093844,"data":"[13/50] dev-0013: 4436 ms, 84 tokens\n"}
+,{"stream_name":"stdout","time":686.741684096,"data":"[14/50] dev-0014: 2421 ms, 43 tokens\n"}
+,{"stream_name":"stdout","time":691.479534733,"data":"[15/50] dev-0015: 4737 ms, 94 tokens\n"}
+,{"stream_name":"stdout","time":698.377044551,"data":"[16/50] dev-0016: 6898 ms, 144 tokens\n"}
+,{"stream_name":"stdout","time":703.606636388,"data":"[17/50] dev-0017: 5222 ms, 106 tokens\n"}
+,{"stream_name":"stdout","time":711.935958502,"data":"[18/50] dev-0018: 8336 ms, 176 tokens\n"}
+,{"stream_name":"stdout","time":715.058172561,"data":"[19/50] dev-0019: 3122 ms, 61 tokens\n"}
+,{"stream_name":"stdout","time":719.975530274,"data":"[20/50] dev-0020: 4917 ms, 101 tokens\n"}
+,{"stream_name":"stdout","time":725.77542751,"data":"[21/50] dev-0021: 5800 ms, 120 tokens\n"}
+,{"stream_name":"stdout","time":733.718537707,"data":"[22/50] dev-0022: 7935 ms, 168 tokens\n"}
+,{"stream_name":"stdout","time":738.558455312,"data":"[23/50] dev-0023: 4847 ms, 98 tokens\n"}
+,{"stream_name":"stdout","time":746.800021023,"data":"[24/50] dev-0024: 8242 ms, 174 tokens\n"}
+,{"stream_name":"stdout","time":753.791991525,"data":"[25/50] dev-0025: 6991 ms, 146 tokens\n"}
+,{"stream_name":"stdout","time":759.504290973,"data":"[26/50] dev-0026: 5712 ms, 117 tokens\n"}
+,{"stream_name":"stdout","time":763.625784551,"data":"[27/50] dev-0027: 4121 ms, 81 tokens\n"}
+,{"stream_name":"stdout","time":767.626991399,"data":"[28/50] dev-0028: 3993 ms, 79 tokens\n"}
+,{"stream_name":"stdout","time":775.257680938,"data":"[29/50] dev-0029: 7638 ms, 161 tokens\n"}
+,{"stream_name":"stdout","time":780.94053898,"data":"[30/50] dev-0030: 5682 ms, 118 tokens\n"}
+,{"stream_name":"stdout","time":782.802295475,"data":"[31/50] dev-0031: 1861 ms, 32 tokens\n"}
+,{"stream_name":"stdout","time":790.034309363,"data":"[32/50] dev-0032: 7231 ms, 152 tokens\n"}
+,{"stream_name":"stdout","time":798.542802217,"data":"[33/50] dev-0033: 8500 ms, 177 tokens\n"}
+,{"stream_name":"stdout","time":801.750349149,"data":"[34/50] dev-0034: 3215 ms, 62 tokens\n"}
+,{"stream_name":"stdout","time":803.497776248,"data":"[35/50] dev-0035: 1747 ms, 29 tokens\n"}
+,{"stream_name":"stdout","time":808.517356633,"data":"[36/50] dev-0036: 5019 ms, 102 tokens\n"}
+,{"stream_name":"stdout","time":816.821348679,"data":"[37/50] dev-0037: 8304 ms, 175 tokens\n"}
+,{"stream_name":"stdout","time":825.640728691,"data":"[38/50] dev-0038: 8820 ms, 188 tokens\n"}
+,{"stream_name":"stdout","time":831.86016564,"data":"[39/50] dev-0039: 6205 ms, 128 tokens\n"}
+,{"stream_name":"stdout","time":836.917572977,"data":"[40/50] dev-0040: 5072 ms, 104 tokens\n"}
+,{"stream_name":"stdout","time":847.206610646,"data":"[41/50] dev-0041: 10288 ms, 221 tokens\n"}
+,{"stream_name":"stdout","time":854.942537742,"data":"[42/50] dev-0042: 7737 ms, 161 tokens\n"}
+,{"stream_name":"stdout","time":864.912525895,"data":"[43/50] dev-0043: 9961 ms, 211 tokens\n"}
+,{"stream_name":"stdout","time":869.673690978,"data":"[44/50] dev-0044: 4769 ms, 97 tokens\n"}
+,{"stream_name":"stdout","time":876.63689155,"data":"[45/50] dev-0045: 6962 ms, 145 tokens\n"}
+,{"stream_name":"stdout","time":883.718427139,"data":"[46/50] dev-0046: 7081 ms, 149 tokens\n"}
+,{"stream_name":"stdout","time":886.115395269,"data":"[47/50] dev-0047: 2397 ms, 44 tokens\n"}
+,{"stream_name":"stdout","time":894.292510798,"data":"[48/50] dev-0048: 8177 ms, 173 tokens\n"}
+,{"stream_name":"stdout","time":901.575482998,"data":"[49/50] dev-0049: 7275 ms, 151 tokens\n"}
+,{"stream_name":"stdout","time":907.419648144,"data":"[50/50] dev-0050: 5779 ms, 121 tokens\n"}
+,{"stream_name":"stdout","time":907.616423223,"data":"base-smollm3-3b: {'n': 50, 'errors': 0, 'empty_sql': 0, 'hit_max_new_tokens': 0, 'p50_latency_ms': 5019, 'mean_input_tokens': 782.42} -\u003e /kaggle/working/base-smollm3-3b__dev.jsonl\n"}
+,{"stream_name":"stdout","time":907.641359197,"data":"base-qwen2.5-coder-1.5b-instruct: n=50 erros=0 sql_vazia=0 cortadas=0 p50=2948 ms carga=39.8 s total=186.1 s -\u003e base-qwen2.5-coder-1.5b-instruct__dev.jsonl\n"}
+,{"stream_name":"stdout","time":907.641388819,"data":"base-qwen3-1.7b: n=50 erros=0 sql_vazia=0 cortadas=6 p50=7569 ms carga=26.4 s total=375.1 s -\u003e base-qwen3-1.7b__dev.jsonl\n"}
+,{"stream_name":"stdout","time":907.641395133,"data":"base-smollm3-3b: n=50 erros=0 sql_vazia=0 cortadas=0 p50=5019 ms carga=34.8 s total=297.7 s -\u003e base-smollm3-3b__dev.jsonl\n"}
+,{"stream_name":"stderr","time":913.690028715,"data":"/usr/local/lib/python3.13/dist-packages/mistune.py:435: SyntaxWarning: invalid escape sequence '\\|'\n"}
+,{"stream_name":"stderr","time":913.690059785,"data":"  cells[i][c] = re.sub('\\\\\\\\\\|', '|', cell)\n"}
+,{"stream_name":"stderr","time":913.901111611,"data":"/usr/local/lib/python3.13/dist-packages/nbconvert/filters/filter_links.py:36: SyntaxWarning: invalid escape sequence '\\_'\n"}
+,{"stream_name":"stderr","time":913.901140505,"data":"  text = re.sub(r'_', '\\_', text) # Escape underscores in display text\n"}
+,{"stream_name":"stderr","time":914.73926129,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to notebook\n"}
+,{"stream_name":"stderr","time":914.889378074,"data":"[NbConvertApp] Writing 404706 bytes to __notebook__.ipynb\n"}
+,{"stream_name":"stderr","time":917.59384353,"data":"[NbConvertApp] Converting notebook __notebook__.ipynb to html\n"}
+,{"stream_name":"stderr","time":918.21403649,"data":"[NbConvertApp] Writing 610249 bytes to __results__.html\n"}
+]
