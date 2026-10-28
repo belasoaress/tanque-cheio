@@ -1,16 +1,25 @@
 """Comandos `tanque gen`: geração e validação do dataset de treino sintético (M4).
 
-Fluxo:
+Caminho padrão, sem API paga (D23):
 
-    uv run tanque gen pilot                 # 20 requisições; espera, cobra e mostra amostra
+    uv run tanque gen templates --n 10000 --seed 42  # templates -> pipeline -> train
+    uv run tanque gen check-leakage
+    uv run tanque gen stats
+
+Caminho opcional pela Batch API:
+
+    uv run tanque gen pilot               # 20 requisições; espera, cobra e mostra amostra
     uv run tanque gen submit --requests 480 # resto da geração (pede --approved se > US$ 0,50)
     uv run tanque gen collect <batch_id>    # quando o lote terminar
     uv run tanque gen validate              # bruto -> datasets/train.jsonl
     uv run tanque gen check-leakage         # 0 colisões com dev/teste
     uv run tanque gen stats                 # results/gen-stats.md
 
-Só `pilot`, `submit` e `collect` falam com a API (precisam de ANTHROPIC_API_KEY
-no ambiente ou no `.env`). Os outros trabalham com os arquivos locais.
+`templates` não chama a API: grava os candidatos crus em data/gen/templates_raw.jsonl
+(fora do controle de versão) e roda o mesmo pipeline do `validate`, com deduplicação
+interna por pergunta ou SQL idêntica. Só `pilot`, `submit` e `collect` falam com a
+API (precisam de ANTHROPIC_API_KEY no ambiente ou no `.env`). Os outros trabalham
+com os arquivos locais.
 """
 
 from __future__ import annotations
@@ -23,6 +32,7 @@ import typer
 from tanque.budget import BudgetExceededError, Ledger
 from tanque.gen import batch as batch_mod
 from tanque.gen import leakage, pipeline
+from tanque.gen import templates as templates_mod
 from tanque.infer import api
 from tanque.sql import execute
 
@@ -264,6 +274,41 @@ def validate(
     for reason, n in result.reasons.items():
         typer.echo(f"  descartados por {reason}: {n}")
     typer.echo(f"Treino: {result.train_path}\nResumo: {result.summary_path}")
+
+
+@app.command()
+def templates(
+    n: Annotated[int, typer.Option("--n", help="Candidatos crus a gerar.")] = 10000,
+    seed: Annotated[int, typer.Option(help="Seed do sorteio dos parâmetros.")] = 42,
+    db: DbOption = None,
+    timeout_s: Annotated[float | None, typer.Option(help="Timeout por SQL (s).")] = None,
+) -> None:
+    """Gera o treino por templates (D23, sem API) e roda validação, vazamento e stats."""
+    db_path = _require_db(db)
+    try:
+        leakage.load_reference()
+    except leakage.MissingEvalSetError as e:
+        typer.echo(f"Erro: {e}. O treino só é gravado depois da checagem de vazamento.", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(f"Gerando {n} candidatos por templates (seed {seed})...")
+    gen = templates_mod.generate(n, seed=seed, db_path=db_path)
+    raw = templates_mod.write_raw(gen)
+    typer.echo(f"Candidatos crus: {len(gen.candidates)} -> {raw}")
+    if gen.exhausted:
+        typer.echo("Intenções esgotadas (cota repartida no nível): " + ", ".join(gen.exhausted))
+    result = pipeline.build_train(
+        db_path=db_path,
+        timeout_s=timeout_s,
+        pairs=gen.candidates,
+        dedupe_mode="exact",
+        check_repeated=False,
+        extra_summary=gen.summary(),
+    )
+    typer.echo(f"Válidos na execução: {result.valid}; no treino: {result.final}")
+    for reason, k in result.reasons.items():
+        typer.echo(f"  descartados por {reason}: {k}")
+    out, _ = pipeline.write_stats()
+    typer.echo(f"Treino: {result.train_path}\nResumo: {result.summary_path}\nStats: {out}")
 
 
 @app.command("check-leakage")

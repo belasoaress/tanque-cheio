@@ -12,8 +12,13 @@ dialeto duckdb (`normalize=True`, identificadores em minúsculas); depois tudo v
 para minúsculas e todos os espaços saem. Se a SQL não faz parse, usa o texto
 original com a mesma limpeza.
 
-A deduplicação interna usa o mesmo critério: na ordem do arquivo, o primeiro par
-fica e os seguintes que colidem com algum par já mantido saem.
+A deduplicação interna do caminho Batch usa o mesmo critério (`dedupe`): na
+ordem do arquivo, o primeiro par fica e os seguintes que colidem com algum par já
+mantido saem. No treino gerado por templates (D23), a deduplicação interna é
+`dedupe_exact`: sai só o par com pergunta normalizada **idêntica** ou SQL
+normalizada idêntica à de um par já mantido. O fuzzy trataria "gasolina em SP em
+2025" e "gasolina em MG em 2025" como duplicatas, apesar de serem exemplos
+distintos. O filtro contra dev/teste não muda.
 
 Atenção ao `token_set_ratio`: quando o conjunto de palavras de uma pergunta está
 contido no da outra, a nota é 100. Perguntas do mesmo molde com um parâmetro
@@ -165,6 +170,33 @@ def dedupe(
         kept.append(item)
         kept_q.append(q)
         kept_pos.append(i)
+        if s:
+            kept_sql[s] = i
+    return kept, removed
+
+
+def dedupe_exact(
+    items: Sequence[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[Collision]]:
+    """Mantém o primeiro de cada grupo com pergunta ou SQL normalizada idêntica (D23)."""
+    kept: list[dict[str, Any]] = []
+    kept_q: dict[str, int] = {}
+    kept_sql: dict[str, int] = {}
+    removed: list[Collision] = []
+    for i, item in enumerate(items):
+        q = normalize_question(item.get("question", ""))
+        s = normalize_sql(item.get("sql", ""))
+        if q and q in kept_q:
+            j = kept_q[q]
+            removed.append(Collision(i, "pergunta", j, items[j].get("id"), 100.0))
+            continue
+        if s and s in kept_sql:
+            j = kept_sql[s]
+            removed.append(Collision(i, "sql", j, items[j].get("id"), 100.0))
+            continue
+        kept.append(item)
+        if q:
+            kept_q[q] = i
         if s:
             kept_sql[s] = i
     return kept, removed

@@ -15,6 +15,10 @@ Passos, na ordem; o primeiro que falha descarta o par com o motivo indicado:
 | `resultado_repetido` | outra pergunta **diferente** da mesma intenção já tem o mesmo resultado |
 
 `resultado_repetido` é o sinal de SQL genérica, que ignora os filtros da pergunta.
+No treino por templates (D23) a regra fica desligada (`check_repeated=False`): a SQL
+é montada a partir dos parâmetros sorteados, então não pode ser genérica, e respostas
+escalares de parâmetros diferentes coincidem com frequência depois do arredondamento
+a 2 casas (ex.: dois estados com preço médio de R$ 6,43).
 
 Sobre `resultado_repetido`: o primeiro par de cada resultado fica; os seguintes
 com pergunta normalizada diferente saem. O resultado é comparado como
@@ -25,7 +29,8 @@ pergunta, o que a deduplicação faria de qualquer forma.
 Os pares aprovados têm os espaços da SQL normalizados (fora de literais de
 texto) e viram exemplos no formato da seção 5.2 (`split = "train"`,
 `source = "synthetic"`, `reviewed = false`). A intenção vai em `tags` como
-`intent:<id>`, para não mudar o contrato. `uses_window` é detectado na SQL;
+`intent:<id>`, para não mudar o contrato, seguida das tags do catálogo e das
+que o gerador mandar no par (ex.: `typo`, produto, período). `uses_window` é detectado na SQL;
 `order_matters` vem do gerador e, se faltar, do `ORDER BY` de topo.
 """
 
@@ -132,6 +137,7 @@ def validate_pairs(
     db_path: str | Path | None = None,
     timeout_s: float | None = None,
     run: RunFn = execute.run,
+    check_repeated: bool = True,
 ) -> ValidationResult:
     """Valida cada par `{question, sql, intent, order_matters?, ...}` (ver docstring)."""
     out = ValidationResult()
@@ -174,7 +180,7 @@ def validate_pairs(
             continue
         key = (intent_id, result_fingerprint(result))
         norm_q = leakage.normalize_question(question)
-        if key in seen and seen[key] != norm_q:
+        if check_repeated and key in seen and seen[key] != norm_q:
             out.discarded.append(Discard(pair, "resultado_repetido", seen[key]))
             continue
         seen.setdefault(key, norm_q)
@@ -192,9 +198,19 @@ def validate_pairs(
                 "split": "train",
                 "source": "synthetic",
                 "reviewed": False,
-                "tags": [f"intent:{intent_id}", *intent.tags],
+                "tags": _merge_tags(f"intent:{intent_id}", intent.tags, pair.get("tags")),
             }
         )
+    return out
+
+
+def _merge_tags(first: str, *groups: Any) -> list[str]:
+    """Tag da intenção primeiro, depois as do catálogo e as do gerador, sem repetir."""
+    out = [first]
+    for group in groups:
+        for tag in group or ():
+            if isinstance(tag, str) and tag and tag not in out:
+                out.append(tag)
     return out
 
 

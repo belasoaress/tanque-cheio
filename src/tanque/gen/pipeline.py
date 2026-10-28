@@ -2,10 +2,13 @@
 
 `build_train`:
 
-1. lê os pares crus de `results/gen/raw/*.jsonl` (nenhuma chamada à API);
+1. lê os pares crus de `results/gen/raw/*.jsonl` (caminho Batch; nenhuma chamada
+   à API aqui) ou recebe os pares prontos (`pairs=`, caminho por templates, D23);
 2. valida por execução (`tanque.gen.validate`);
 3. remove pares que colidem com dev/teste (`tanque.gen.leakage`), motivo `vazamento`;
-4. deduplica internamente com o mesmo critério, motivo `duplicado`;
+4. deduplica internamente, motivo `duplicado`: no caminho Batch com o mesmo
+   critério do vazamento (`dedupe_mode="fuzzy"`); no de templates só por pergunta
+   ou SQL normalizada idêntica (`dedupe_mode="exact"`, D23);
 5. grava `datasets/train.jsonl` (ids `train-00001`...), os descartes em
    `data/gen/discarded.jsonl` (ignorado pelo git) e o resumo em
    `results/gen/validate-summary.json` (sem horário, para ser reproduzível).
@@ -77,11 +80,20 @@ def build_train(
     summary_path: str | Path | None = None,
     timeout_s: float | None = None,
     threshold: float = leakage.THRESHOLD,
+    pairs: list[dict[str, Any]] | None = None,
+    dedupe_mode: str = "fuzzy",
+    check_repeated: bool = True,
+    extra_summary: dict[str, Any] | None = None,
 ) -> BuildResult:
+    if dedupe_mode not in ("fuzzy", "exact"):
+        raise ValueError(f"dedupe_mode inválido: {dedupe_mode}")
     reference, _ = leakage.load_reference(reference_dir)  # falha cedo se faltar dev/teste
-    pairs = batch_mod.raw_candidates(raw_dir)
-    requests = len({p["custom_id"] for p in pairs})
-    vr = validate_mod.validate_pairs(pairs, db_path=db_path, timeout_s=timeout_s)
+    if pairs is None:
+        pairs = batch_mod.raw_candidates(raw_dir)
+    requests = len({p["custom_id"] for p in pairs if "custom_id" in p})
+    vr = validate_mod.validate_pairs(
+        pairs, db_path=db_path, timeout_s=timeout_s, check_repeated=check_repeated
+    )
 
     no_leak, leaks = leakage.remove_leaks(vr.valid, reference, threshold)
     leaked = {c.index: c for c in leaks}
@@ -97,7 +109,10 @@ def build_train(
                 }
             )
 
-    kept, dups = leakage.dedupe(no_leak, threshold)
+    if dedupe_mode == "exact":
+        kept, dups = leakage.dedupe_exact(no_leak)
+    else:
+        kept, dups = leakage.dedupe(no_leak, threshold)
     for c in dups:
         discards.append(
             {
@@ -121,11 +136,40 @@ def build_train(
         "final": len(items),
         "discarded_by_reason": reasons,
         "leakage_threshold": threshold,
+        "dedupe_mode": dedupe_mode,
+        "check_repeated_results": check_repeated,
+        "by_intent": _by_intent(pairs, discards, items),
+        **(extra_summary or {}),
     }
     spath = config.resolve_path(summary_path or SUMMARY_RELPATH)
     spath.parent.mkdir(parents=True, exist_ok=True)
     spath.write_text(json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return BuildResult(len(pairs), len(vr.valid), len(items), reasons, out, spath)
+
+
+def _intent_key(row: dict[str, Any]) -> str:
+    return row.get("intent") or validate_mod.intent_of(row) or "(sem intenção)"
+
+
+def _by_intent(
+    pairs: list[dict[str, Any]], discards: list[dict[str, Any]], items: list[dict[str, Any]]
+) -> dict[str, dict[str, int]]:
+    """{intenção: {raw, final, <motivo>: n}} (só contagens, nada de texto)."""
+    out: dict[str, Counter] = {}
+    for p in pairs:
+        out.setdefault(_intent_key(p), Counter())["raw"] += 1
+    for d in discards:
+        out.setdefault(_intent_key(d), Counter())[d["reason"]] += 1
+    for t in items:
+        out.setdefault(_intent_key(t), Counter())["final"] += 1
+    return {
+        k: {
+            "raw": v["raw"],
+            "final": v["final"],
+            **{r: n for r, n in sorted(v.items()) if r not in ("raw", "final")},
+        }
+        for k, v in sorted(out.items())
+    }
 
 
 # --- relatório --------------------------------------------------------------
@@ -168,9 +212,29 @@ def render_stats(
         ok = "sim" if total and abs(share - target) <= TOLERANCE_PP else "não"
         lines.append(f"| {level} | {n} | {_pct(n, total)} | {target:.0f}% | {ok} |")
 
-    lines += ["", "## Por intenção", "", "| intenção | nível | pares |", "|---|---|---:|"]
+    per_intent = (summary or {}).get("by_intent") or {}
+    lines += [
+        "",
+        "## Por intenção",
+        "",
+        "Contagens por intenção: crus = pares que entraram no pipeline; os motivos são os do",
+        "pipeline (validação por execução, vazamento contra dev/teste, duplicado interno).",
+        "",
+        "| intenção | nível | pares | crus | mantidos | vazamento | duplicado | outros |",
+        "|---|---|---:|---:|---:|---:|---:|---:|",
+    ]
     for intent in intents_mod.INTENTS:
-        lines.append(f"| `{intent.id}` | {intent.level} | {by_intent.get(intent.id, 0)} |")
+        st = per_intent.get(intent.id, {})
+        raw = int(st.get("raw", 0))
+        leak, dup = int(st.get("vazamento", 0)), int(st.get("duplicado", 0))
+        other = sum(
+            int(v) for k, v in st.items() if k not in ("raw", "final", "vazamento", "duplicado")
+        )
+        n = by_intent.get(intent.id, 0)
+        lines.append(
+            f"| `{intent.id}` | {intent.level} | {n} | {raw} | {_pct(n, raw)} | {leak} | {dup} "
+            f"| {other} |"
+        )
     unknown = sum(c for k, c in by_intent.items() if k not in intents_mod.INTENTS_BY_ID)
     if unknown:
         lines.append(f"| (sem intenção) | — | {unknown} |")
@@ -190,6 +254,43 @@ def render_stats(
         ]
         for reason, n in summary.get("discarded_by_reason", {}).items():
             lines.append(f"| `{reason}` | {n} | {_pct(n, raw)} |")
+        if summary.get("dedupe_mode"):
+            crit = (
+                "pergunta ou SQL normalizada idêntica (D23)"
+                if summary["dedupe_mode"] == "exact"
+                else f"token_set_ratio >= {summary.get('leakage_threshold')} ou SQL idêntica"
+            )
+            lines += ["", f"- Deduplicação interna: {crit}."]
+        if summary.get("check_repeated_results") is False:
+            lines.append(
+                "- Regra `resultado_repetido` desligada: a SQL é montada pelo template a partir "
+                "dos parâmetros sorteados (D23), então não pode ser genérica."
+            )
+        lines.append(
+            f"- Vazamento contra dev/teste: token_set_ratio >= "
+            f"{summary.get('leakage_threshold')} ou SQL normalizada idêntica."
+        )
+        gen = summary.get("generation_rejected_by_reason")
+        if summary.get("generator") == "templates":
+            lines += [
+                "",
+                "### Geração por templates (antes do pipeline)",
+                "",
+                f"- Seed: {summary.get('seed')}; pedidos: {summary.get('requested')}; "
+                f"gerados: {summary.get('generated')}",
+                "- Tentativas recusadas na geração (o candidato nem chega ao pipeline):",
+                "",
+                "| motivo | tentativas |",
+                "|---|---:|",
+            ]
+            for reason, n in (gen or {}).items():
+                lines.append(f"| `{reason}` | {n} |")
+            if summary.get("exhausted_intents"):
+                lines += [
+                    "",
+                    "- Intenções que esgotaram o espaço de parâmetros (a cota foi repartida "
+                    "no mesmo nível): " + ", ".join(f"`{i}`" for i in summary["exhausted_intents"]),
+                ]
     else:
         lines.append("(sem resumo: rode `tanque gen validate`)")
 
@@ -201,10 +302,13 @@ def render_stats(
             tokens[k] += int(e.get(k, 0))
     batches = registry.submitted_of_kind(batch_mod.KIND)
     estimate = sum(Decimal(str(b.get("estimate_usd", 0))) for b in batches)
+    lines += ["", "## Custo (ledger, marco M4)", ""]
+    if summary and summary.get("generator") == "templates":
+        lines += [
+            "- Origem do treino: templates parametrizados com valores reais do banco (D23), "
+            "sem chamadas à API.",
+        ]
     lines += [
-        "",
-        "## Custo (ledger, marco M4)",
-        "",
         f"- Lotes enviados: {len(batches)}; requisições: "
         f"{sum(int(b.get('n_requests', 0)) for b in batches)}",
         f"- Chamadas cobradas: {len(m4)}",
