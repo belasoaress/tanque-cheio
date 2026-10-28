@@ -375,14 +375,14 @@ def _versions() -> dict[str, str | None]:
     return out
 
 
-def _resolved_revision(model_id: str, revision: str | None) -> str | None:
-    """Commit do checkpoint no Hugging Face (para reprodutibilidade); o pedido se offline."""
+def _resolved_revision(model_id: str, revision: str | None) -> tuple[str | None, str | None]:
+    """(commit do checkpoint no Hugging Face, erro); sem rede, devolve o pedido e o erro."""
     try:
         from huggingface_hub import model_info
 
-        return model_info(model_id, revision=revision).sha
-    except Exception:  # sem rede ou repo local
-        return revision
+        return model_info(model_id, revision=revision).sha, None
+    except Exception as e:  # sem rede, limite da API ou repo local
+        return revision, f"{type(e).__name__}: {e}"
 
 
 def _device_name(device: str) -> str | None:
@@ -467,13 +467,17 @@ def run_predictions(
         _free_cuda()
     write_predictions(path, predictions)
     summary = summarize(predictions, max_new_tokens=max_new_tokens)
+    model_revision, revision_error = _resolved_revision(model_id, revision)
+    if revision_error:
+        echo(f"Aviso: commit do checkpoint não resolvido ({revision_error})")
     echo(f"{system}: {summary} -> {path}")
     return {
         "system": system,
         "split": split,
         "path": str(path),
         "model_id": model_id,
-        "model_revision": _resolved_revision(model_id, revision),
+        "model_revision": model_revision,
+        "model_revision_error": revision_error,
         "adapter_id": adapter_id,
         "dtype": dtype,
         "hardware": hardware,
