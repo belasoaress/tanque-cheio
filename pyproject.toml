@@ -34,6 +34,13 @@ infer = [
     "accelerate",
     "peft",
 ]
+# Fine-tuning (M6), só para o ensaio de fumaça em CPU com modelo minúsculo:
+#   uv sync --group infer --group train
+# No Kaggle, o 02_finetune.ipynb instala as versões fixadas (trl, peft,
+# bitsandbytes...); estas são as mesmas, para o ensaio local valer.
+train = [
+    "trl==1.16.0",
+]
 
 [tool.uv]
 default-groups = ["dev"]

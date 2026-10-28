@@ -1,0 +1,71 @@
+# Hiperparâmetros do fine-tuning QLoRA (M6). Lido por `tanque.train.config` e pelo
+# notebook `notebooks/02_finetune.ipynb`. Cada rodada registrada em
+# `results/training.md` cita o commit deste arquivo.
+
+[model]
+# Modelo base: o recomendado pelo bake-off (results/bakeoff.md). A escolha final é da
+# Isabela; para trocar, mude só esta linha (e, se for Qwen3/SmolLM3, os dois campos
+# abaixo e `lora.target_modules`).
+base_model = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+revision = ""  # commit do checkpoint no HF; "" = main (o commit usado vai no log)
+# Mesmas opções de template da inferência (notebooks/01_bakeoff.ipynb):
+# Qwen3 / SmolLM3: chat_template_kwargs = { enable_thinking = false }
+# SmolLM3: system_suffix = "/system_override"
+chat_template_kwargs = {}
+system_suffix = ""
+
+[quantization]
+# QLoRA: pesos do modelo base em 4 bits (nf4) só no treino. Em CPU (ensaio de fumaça)
+# a quantização é desligada, porque o bitsandbytes precisa de GPU.
+load_in_4bit = true
+quant_type = "nf4"
+double_quant = true
+compute_dtype = "float16"  # a T4 não tem bf16 nativo
+
+[lora]
+r = 16
+alpha = 32
+dropout = 0.05
+bias = "none"
+# Projeções de atenção e MLP. Nomes dos módulos do Qwen2 (Qwen2.5-Coder); valem também
+# para Qwen3 e SmolLM3 (mesma nomenclatura do Llama).
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+[data]
+train_path = "datasets/train.jsonl"
+# Fração do treino separada (por seed) só para a perda de validação.
+val_fraction = 0.05
+# 0 = todos os 8.217 pares. Um número N > 0 sorteia N pares de train.jsonl (antes da
+# divisão treino/validação) mantendo a proporção de cada (nível, intenção). Use para
+# encurtar a rodada se o tempo de GPU passar do limite (ver results/training.md).
+max_train_examples = 0
+# O plano pede 1024, mas 421 dos 8.217 pares (5,1%) passam disso com o tokenizer do
+# Qwen2.5 (prompt de 780-836 tokens + SQL de até 285; máximo 1.104). Truncar cortaria
+# o fim da SQL e o token de fim. 1152 cabe todos; pares maiores são descartados (e
+# contados no log), nunca truncados.
+max_seq_len = 1152
+seed = 42
+
+[training]
+epochs = 2
+learning_rate = 2e-4
+lr_scheduler = "cosine"
+warmup_ratio = 0.03
+# Batch efetivo 16 = 4 por passo x 4 de acumulação. Com gradient checkpointing, 4
+# sequências de ~1.000 tokens cabem na T4 (16 GB); o pico de memória é o dos logits
+# (4 x 1.152 x 151.936 do vocabulário). Se der falta de memória: 2 x 8.
+per_device_train_batch_size = 4
+gradient_accumulation_steps = 4
+per_device_eval_batch_size = 4
+gradient_checkpointing = true
+fp16 = true
+bf16 = false
+optim = "adamw_torch"
+weight_decay = 0.0
+max_grad_norm = 1.0
+# Perda só na resposta (a SQL e o token de fim de turno), não no prompt.
+completion_only_loss = true
+logging_steps = 10
+eval_steps = 100
+# Checkpoint intermediário (só o último fica), para não perder tudo se a sessão cair.
+save_steps = 200
