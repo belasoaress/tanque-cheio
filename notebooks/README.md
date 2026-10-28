@@ -2,8 +2,8 @@
 
 | Notebook | Kernel no Kaggle | O que faz |
 |---|---|---|
-| `01_bakeoff.ipynb` | `belasoares/tanque-cheio-bakeoff` (`kaggle/bakeoff/`) | Previsões dos candidatos aprovados no dev (M5) |
-| `03_predict.ipynb` | `belasoares/tanque-cheio-predict` (`kaggle/predict/`) | Previsões de um modelo (com adapter opcional) em `dev` ou `test` (M5–M7) |
+| `01_bakeoff.ipynb` | `belasoaress/tanque-cheio-bakeoff` (`kaggle/bakeoff/`) | Previsões dos candidatos aprovados no dev (M5) |
+| `03_predict.ipynb` | `belasoaress/tanque-cheio-predict` (`kaggle/predict/`) | Previsões de um modelo (com adapter opcional) em `dev` ou `test` (M5–M7) |
 | `02_finetune.ipynb` | _(M6)_ | QLoRA |
 
 Os dois notebooks instalam o pacote com
@@ -28,7 +28,7 @@ kernels ficam **privados**: só viram públicos no M6, com aprovação.
    reproduzível, troque pelo commit exato.
 3. A conta do Kaggle precisa ter o **telefone verificado**, ou o Kaggle não libera GPU
    nem internet.
-4. Se o seu usuário do Kaggle **não** for `belasoares`, troque o dono no campo `id` dos
+4. Se o seu usuário do Kaggle **não** for `belasoaress`, troque o dono no campo `id` dos
    dois `kernel-metadata.json` (ex.: `seu-usuario/tanque-cheio-bakeoff`).
 
 ## Opção 1: Kaggle CLI (Windows / PowerShell)
@@ -57,10 +57,10 @@ kaggle kernels list --mine --page-size 5   # confirma a autenticação
 kaggle kernels push -p notebooks/kaggle/bakeoff
 
 # 5. Acompanhar até "COMPLETE" (ou "ERROR"); repita de tempos em tempos
-kaggle kernels status belasoares/tanque-cheio-bakeoff
+kaggle kernels status belasoaress/tanque-cheio-bakeoff
 
 # 6. Baixar as previsões e o run-info para results/predictions/
-kaggle kernels output belasoares/tanque-cheio-bakeoff -p results/predictions --file-pattern ".*\.jsonl?$" -o
+kaggle kernels output belasoaress/tanque-cheio-bakeoff -p results/predictions --file-pattern ".*\.jsonl?$" -o
 
 # 7. Métricas de cada candidato e a tabela do bake-off
 Get-ChildItem results/predictions/base-*__dev.jsonl | ForEach-Object {
@@ -70,12 +70,12 @@ uv run tanque eval bakeoff
 ```
 
 Se o status for `ERROR`, o log vem junto com
-`kaggle kernels output belasoares/tanque-cheio-bakeoff -p kaggle-log -o` (arquivo
+`kaggle kernels output belasoaress/tanque-cheio-bakeoff -p kaggle-log -o` (arquivo
 `.log`). Não commite a pasta `kaggle-log`.
 
 `03_predict` funciona do mesmo jeito: ajuste a 1ª célula (`MODEL_ID`, `DATASET`...), rode
 `kaggle kernels push -p notebooks/kaggle/predict` e baixe com
-`kaggle kernels output belasoares/tanque-cheio-predict -p results/predictions --file-pattern ".*\.jsonl?$" -o`.
+`kaggle kernels output belasoaress/tanque-cheio-predict -p results/predictions --file-pattern ".*\.jsonl?$" -o`.
 
 ## Opção 2: pela interface web
 
