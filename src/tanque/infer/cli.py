@@ -2,12 +2,17 @@
 
     uv run tanque infer claude datasets/dev.jsonl --model frontier --limit 10
     uv run tanque infer claude datasets/test.jsonl --model frontier --batch --approved
+    uv run --group infer tanque infer local datasets/dev.jsonl --model <repo-hf> --limit 2 \
+        --device cpu --dtype float32 --out-dir <pasta>
 
-O modelo é sempre uma chave de configs/pricing.toml (`cheap`, `frontier`).
+Em `claude`, o modelo é sempre uma chave de configs/pricing.toml (`cheap`, `frontier`).
+Em `local`, é um repo do Hugging Face; precisa do grupo opcional `infer` (torch,
+transformers). No Kaggle, os notebooks chamam `tanque.infer.local` diretamente.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -16,6 +21,7 @@ import typer
 from tanque.budget import BudgetExceededError, Ledger
 from tanque.infer import api
 from tanque.infer import claude as claude_mod
+from tanque.infer import local as local_mod
 
 app = typer.Typer(
     help="Inferência: previsões dos sistemas avaliados (M7).",
@@ -169,3 +175,55 @@ def collect(
     out_path = Path(entry["out_path"])
     claude_mod.write_predictions(out_path, predictions)
     _report(predictions, out_path)
+
+
+@app.command()
+def local(
+    dataset: Annotated[Path, typer.Argument(help="Dataset JSONL (seção 5.2).")],
+    model: Annotated[str, typer.Option(help="Repo do modelo no Hugging Face.")],
+    out_dir: Annotated[Path, typer.Option(help="Pasta de saída (<system>__<split>.jsonl).")],
+    adapter: Annotated[str | None, typer.Option(help="Adapter LoRA (repo HF ou pasta).")] = None,
+    revision: Annotated[str | None, typer.Option(help="Commit/branch do modelo.")] = None,
+    system: Annotated[str | None, typer.Option(help="Nome do sistema (padrão: base-/ft-).")] = None,
+    limit: Annotated[int | None, typer.Option(help="Só os N primeiros itens.")] = None,
+    dtype: Annotated[str, typer.Option(help="float16, bfloat16 ou float32.")] = "float16",
+    device: Annotated[str, typer.Option(help="cuda ou cpu.")] = "cuda",
+    max_new_tokens: Annotated[int, typer.Option(help="Limite de tokens gerados.")] = (
+        local_mod.DEFAULT_MAX_NEW_TOKENS
+    ),
+    no_thinking: Annotated[
+        bool, typer.Option("--no-thinking", help="Passa enable_thinking=False ao chat template.")
+    ] = False,
+    system_suffix: Annotated[
+        str, typer.Option(help="Sinal ao template no fim do system (ex.: /system_override).")
+    ] = "",
+) -> None:
+    """Previsões (seção 5.3) de um modelo open-source com transformers (teste local; M5/M6)."""
+    if not dataset.is_file():
+        typer.echo(f"Dataset não encontrado: {dataset}", err=True)
+        raise typer.Exit(code=2)
+    try:
+        import torch  # noqa: F401
+        import transformers  # noqa: F401
+    except ImportError as e:
+        typer.echo(
+            "Instale as dependências opcionais: uv sync --group infer (torch, transformers).",
+            err=True,
+        )
+        raise typer.Exit(code=2) from e
+    info = local_mod.run_predictions(
+        dataset,
+        model,
+        out_dir=out_dir,
+        adapter_id=adapter,
+        revision=revision,
+        system=system,
+        limit=limit,
+        dtype=dtype,
+        device=device,
+        max_new_tokens=max_new_tokens,
+        chat_template_kwargs={"enable_thinking": False} if no_thinking else None,
+        system_suffix=system_suffix,
+        echo=typer.echo,
+    )
+    typer.echo(json.dumps(info, ensure_ascii=False, indent=2))
