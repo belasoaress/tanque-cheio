@@ -3,7 +3,7 @@ name = "tanque"
 version = "0.1.0"
 description = "Text-to-SQL em português sobre os preços de combustíveis da ANP."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11"
 dependencies = [
     "anthropic",
     "duckdb",
@@ -24,6 +24,27 @@ dev = [
     "pytest",
     "ruff",
 ]
+# Inferência local (M5/M6), só para testes em CPU com modelo minúsculo:
+#   uv sync --group infer
+# Fora do CI principal: o CI instala só o grupo `dev`. No Kaggle, torch,
+# transformers e peft já vêm na imagem (ver notebooks/README.md).
+infer = [
+    "torch>=2.4",
+    "transformers>=4.53",
+    "accelerate",
+    "peft",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [build-system]
 requires = ["hatchling"]
