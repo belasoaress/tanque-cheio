@@ -3,7 +3,7 @@ name = "tanque"
 version = "0.1.0"
 description = "Text-to-SQL em português sobre os preços de combustíveis da ANP."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.11"
 dependencies = [
     "anthropic",
     "duckdb",
