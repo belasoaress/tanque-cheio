@@ -92,7 +92,8 @@ def render_system_prompt(ddl: str, manifest: dict[str, Any]) -> str:
             "- municipios.nome: em maiúsculas e sem acento, ex.: 'SAO PAULO'.",
             "- municipios.capital = true para as 27 capitais.",
             "",
-            "Regra dos 70%: o etanol compensa quando preço_etanol / preço_gasolina <= 0,7.",
+            "Regra dos 70%: o etanol compensa quando preço_etanol / preço_gasolina <= 0,7,",
+            "com preços médios de valor_venda e gasolina = produto 'GASOLINA' (comum).",
             "",
             f"Data de referência: {ref.isoformat()}",
             '"último mês" = mês do calendário que contém a data de referência '
