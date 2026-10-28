@@ -47,4 +47,5 @@ candidatos é pequena em 50 itens, mas latência e tamanho também apontam para 
 
 ## Escolha da Isabela
 
-_(pendente)_
+**`Qwen/Qwen2.5-Coder-1.5B-Instruct`** (28/10/2026), conforme a recomendação. É o modelo
+base do fine-tuning (M6) e o sistema `base-qwen2.5-coder-1.5b-instruct` do relatório final.
