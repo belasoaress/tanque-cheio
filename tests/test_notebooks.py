@@ -13,8 +13,8 @@ from tanque import config
 
 NOTEBOOKS = config.resolve_path("notebooks")
 KERNELS = {
-    "bakeoff": ("belasoares/tanque-cheio-bakeoff", "01_bakeoff.ipynb"),
-    "predict": ("belasoares/tanque-cheio-predict", "03_predict.ipynb"),
+    "bakeoff": ("belasoaress/tanque-cheio-bakeoff", "01_bakeoff.ipynb"),
+    "predict": ("belasoaress/tanque-cheio-predict", "03_predict.ipynb"),
 }
 PARAMS = {
     "01_bakeoff.ipynb": {"REPO_REF", "DATASET", "LIMIT", "CANDIDATES", "OUT_DIR"},
