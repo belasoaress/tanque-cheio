@@ -4,9 +4,9 @@
 |---|---|---|
 | `01_bakeoff.ipynb` | `belasoares/tanque-cheio-bakeoff` (`kaggle/bakeoff/`) | Previsões dos candidatos aprovados no dev (M5) |
 | `03_predict.ipynb` | `belasoares/tanque-cheio-predict` (`kaggle/predict/`) | Previsões de um modelo (com adapter opcional) em `dev` ou `test` (M5–M7) |
-| `02_finetune.ipynb` | _(M6)_ | QLoRA |
+| `02_finetune.ipynb` | `belasoares/tanque-cheio-finetune` (`kaggle/finetune/`) | QLoRA do modelo base + previsões do adapter no dev (M6) |
 
-Os dois notebooks instalam o pacote com
+Os notebooks instalam o pacote com
 `pip install "tanque @ git+https://github.com/belasoaress/tanque-cheio@<REPO_REF>"`,
 clonam o repositório no mesmo ref (para ter `datasets/`, `configs/` e
 `data/manifest.json`) e chamam `tanque.infer.local.run_predictions`. Esse código é
@@ -98,3 +98,66 @@ Se o status for `ERROR`, o log vem junto com
 - `run-info__bakeoff.json`: commit do repositório, versões de torch/transformers e o
   commit de cada checkpoint no HF.
 - Tempo estimado: 20 a 40 min de GPU no total, com download dos modelos incluído.
+
+## Fine-tuning (M6): `02_finetune.ipynb`
+
+O notebook lê `configs/train.toml` (modelo base, QLoRA, LoRA, lr, épocas...), treina o
+adapter com `tanque.train.finetune.run_finetune` e gera as previsões do **dev** com o
+adapter pela mesma `local.run_predictions` do `03_predict` (sistema `ft-<modelo>`). O
+código é testado em CPU com um modelo minúsculo, sem 4-bit:
+`uv sync --group infer --group train` e `uv run pytest tests/test_train_smoke.py`.
+Hiperparâmetros, estimativa de tempo e o registro de cada rodada: `results/training.md`.
+
+> **Regra 5:** cada execução no Kaggle e a publicação no HF precisam da aprovação da
+> Isabela. Os passos abaixo são para ela.
+
+1. **(Opcional, recomendado) Medir o tempo.** Na 1ª célula, `MAX_STEPS = 30` e
+   `DEV_LIMIT = 3`; depois push (passo 2). Leva ~10 min. No log, a linha
+   "Projeção da rodada completa" diz quantas horas a rodada inteira leva. Se passar de
+   6 h, reduza `max_train_examples` (ex.: 4000) ou `epochs = 1` em `configs/train.toml`,
+   commite e siga. Volte para `MAX_STEPS = None` e `DEV_LIMIT = None`.
+2. **Enviar e executar** (cria o kernel privado na primeira vez):
+
+   ```powershell
+   kaggle kernels push -p notebooks/kaggle/finetune
+   kaggle kernels status belasoares/tanque-cheio-finetune   # repita até COMPLETE
+   ```
+
+3. **Baixar a saída** (o adapter vem junto, numa pasta à parte, fora do git):
+
+   ```powershell
+   kaggle kernels output belasoares/tanque-cheio-finetune -p kaggle-ft -o
+   Copy-Item kaggle-ft/ft-*__dev.jsonl, kaggle-ft/run-info__ft-*.json results/predictions/
+   New-Item -ItemType Directory -Force results/training | Out-Null
+   Copy-Item kaggle-ft/train-log__ft-*.json results/training/
+   ```
+
+   Se o status for `ERROR`, o log está em `kaggle-ft/*.log`.
+4. **EX no dev:**
+
+   ```powershell
+   uv run tanque eval score datasets/dev.jsonl results/predictions/ft-qwen2.5-coder-1.5b-instruct__dev.jsonl
+   ```
+
+5. **Registrar** a rodada em `results/training.md`: a tabela das curvas (impressa pela
+   célula "Curvas de perda"), tempo de GPU (`train_seconds`, `seconds_per_step`,
+   `total_seconds` do `train-log`), pico de memória e o EX do passo 4.
+6. **O que commitar:** `results/predictions/ft-*__dev.jsonl`,
+   `results/predictions/run-info__ft-*__dev.json`, `results/training/train-log__ft-*.json`,
+   `results/metrics.json` (atualizado pelo `eval score`) e `results/training.md`. **Não**
+   commite `kaggle-ft/` nem o adapter (`kaggle-ft/adapter/`): ele vai para o HF.
+7. **Rodadas extras** (no máximo 2, só se o EX subir menos de 5 p.p. sobre o base): mude
+   `configs/train.toml` (lr, épocas ou r), commite, repita os passos 2 a 6 e registre a
+   rodada nova em `training.md`. Nunca use o teste.
+8. **Publicar o adapter no HF** (com aprovação). Crie um token de escrita em
+   https://huggingface.co/settings/tokens. No editor do kernel no Kaggle, **Add-ons →
+   Secrets → Add Secret**, nome `HF_TOKEN`, e marque-o para este notebook (fica salvo
+   para as próximas versões). Na 1ª célula: `HF_REPO = "<usuário-hf>/tanque-cheio-qwen2.5-coder-1.5b-instruct-lora"`
+   (o plano sugere o dono `belasoaress`; confirme seu usuário no HF) e
+   `PUSH_TO_HUB = True`. Rode de novo (passo 2). O repo nasce **privado**
+   (`HF_PRIVATE = True`), com um model card provisório; torná-lo público é um clique em
+   *Settings* no HF. Para publicar sem treinar de novo, suba a pasta baixada:
+   `uvx hf upload <usuário-hf>/tanque-cheio-...-lora kaggle-ft/adapter . --private`.
+9. **Tornar o notebook público** (com aprovação): na página do kernel, *Settings →
+   Sharing → Public*, ou `"is_private": false` em `kaggle/finetune/kernel-metadata.json` e
+   novo push.

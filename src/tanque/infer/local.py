@@ -36,6 +36,10 @@ Decisões:
 - **Precisão:** fp16 por padrão (a T4 não tem bf16 nativo). Sem 4-bit na
   inferência base, para não depender de bitsandbytes e para medir o modelo
   como ele é; o QLoRA do M6 quantiza só no treino.
+- **Adapter (M6):** `adapter_id` (repo do HF ou pasta local, ex.:
+  `/kaggle/working/adapter`) carrega o LoRA com `PeftModel.from_pretrained`
+  sobre o base em fp16, sem fundir; o sistema vira `ft-<modelo>`. Testado em
+  CPU com um adapter treinado na hora (`tests/test_train_smoke.py`).
 - **Erros:** exceção num item (ex.: falta de memória) vira previsão com
   `error` e o laço continua.
 """

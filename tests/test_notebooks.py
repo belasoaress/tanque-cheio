@@ -1,4 +1,4 @@
-"""Notebooks do Kaggle (M5) e seus kernel-metadata.json: estrutura, sem executar nada."""
+"""Notebooks do Kaggle (M5/M6) e seus kernel-metadata.json: estrutura, sem executar nada."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ NOTEBOOKS = config.resolve_path("notebooks")
 KERNELS = {
     "bakeoff": ("belasoares/tanque-cheio-bakeoff", "01_bakeoff.ipynb"),
     "predict": ("belasoares/tanque-cheio-predict", "03_predict.ipynb"),
+    "finetune": ("belasoares/tanque-cheio-finetune", "02_finetune.ipynb"),
 }
 PARAMS = {
     "01_bakeoff.ipynb": {"REPO_REF", "DATASET", "LIMIT", "CANDIDATES", "OUT_DIR"},
@@ -27,7 +28,17 @@ PARAMS = {
         "LIMIT",
         "OUT_DIR",
     },
+    "02_finetune.ipynb": {
+        "REPO_REF",
+        "CONFIG",
+        "MAX_STEPS",
+        "HF_REPO",
+        "PUSH_TO_HUB",
+        "OUT_DIR",
+    },
 }
+# Notebooks só de inferência: sem 4-bit nem bitsandbytes.
+INFERENCE_NOTEBOOKS = ["01_bakeoff.ipynb", "03_predict.ipynb"]
 
 
 def load_notebook(name: str) -> dict:
@@ -63,7 +74,7 @@ def test_parameters_cell_comes_first_and_defines_the_parameters(name):
     assert PARAMS[name] <= assigned
 
 
-@pytest.mark.parametrize("name", sorted(PARAMS))
+@pytest.mark.parametrize("name", INFERENCE_NOTEBOOKS)
 def test_notebook_installs_from_github_and_uses_the_shared_module(name):
     text = "\n".join(source(c) for c in load_notebook(name)["cells"])
     assert "git+{REPO_URL}@{REPO_REF}" in text
@@ -91,3 +102,60 @@ def test_notebooks_have_no_secrets():
             text = path.read_text(encoding="utf-8")
             assert not re.search(r"\bhf_[A-Za-z0-9]{20,}", text), path  # token do HF
             assert not re.search(r'"key"\s*:\s*"[0-9a-f]{32}"', text), path  # kaggle.json
+
+
+# --- 02_finetune (M6) -----------------------------------------------------------
+
+
+def notebook_text(name: str) -> str:
+    return "\n".join(source(c) for c in load_notebook(name)["cells"])
+
+
+def parameters(name: str) -> dict:
+    first = next(c for c in load_notebook(name)["cells"] if c["cell_type"] == "code")
+    values = {}
+    for node in ast.parse(source(first)).body:
+        if isinstance(node, ast.Assign):
+            values[node.targets[0].id] = ast.literal_eval(node.value)
+    return values
+
+
+def test_finetune_parameters_defaults():
+    params = parameters("02_finetune.ipynb")
+    assert params["REPO_REF"] == "main"
+    assert params["CONFIG"] == "configs/train.toml"
+    assert params["PUSH_TO_HUB"] is False  # publicar exige aprovação (regra 5)
+    assert params["HF_REPO"] is None
+    assert params["MAX_STEPS"] is None
+    assert params["OUT_DIR"] == "/kaggle/working"
+
+
+def test_finetune_notebook_uses_the_package_and_never_the_test_set():
+    text = notebook_text("02_finetune.ipynb")
+    assert "git+{REPO_URL}@{REPO_REF}" in text
+    assert 'REPO_URL = "https://github.com/belasoaress/tanque-cheio"' in text
+    assert 'os.environ["TANQUE_ROOT"] = REPO_DIR' in text
+    assert "finetune.run_finetune(" in text
+    assert "local.run_predictions(" in text and 'adapter_id=info["adapter_dir"]' in text
+    assert '"datasets/dev.jsonl"' in text
+    assert "test.jsonl" not in text
+    assert 'UserSecretsClient().get_secret("HF_TOKEN")' in text
+    assert "if PUSH_TO_HUB:" in text
+    for cell in load_notebook("02_finetune.ipynb")["cells"]:
+        if cell["cell_type"] == "code":
+            assert cell["outputs"] == [] and cell["execution_count"] is None
+
+
+def locked_versions() -> dict[str, str]:
+    lock = config.resolve_path("uv.lock").read_text(encoding="utf-8")
+    return dict(re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', lock))
+
+
+def test_finetune_pins_match_the_lock_used_by_the_cpu_smoke_test():
+    text = notebook_text("02_finetune.ipynb")
+    pins = dict(re.findall(r'"([a-z]+)==([0-9][^"]*)"', text))
+    assert {"transformers", "peft", "trl", "accelerate", "datasets", "bitsandbytes"} <= set(pins)
+    locked = locked_versions()
+    for name, version in pins.items():
+        if name in locked:  # bitsandbytes não está no lock (não roda em CPU)
+            assert locked[name] == version, name
