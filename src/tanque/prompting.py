@@ -127,6 +127,31 @@ def build_prompt(question: str) -> list[dict]:
     ]
 
 
+# --- prompt de correção (v2, D32) -------------------------------------------------
+
+REPAIR_ERROR_MAX_CHARS = 300
+
+
+def repair_message(error: str) -> str:
+    """Mensagem do usuário na nova tentativa, com o erro cortado em 300 caracteres."""
+    text = str(error or "").strip()[:REPAIR_ERROR_MAX_CHARS]
+    return f"A consulta falhou: {text}. Responda apenas com a SQL corrigida."
+
+
+def build_repair_prompt(question: str, sql: str, error: str) -> list[dict]:
+    """Mensagens da nova tentativa (plan.md v2, 5.4): o prompt único, a SQL anterior e o erro.
+
+    O começo é exatamente `build_prompt(question)` (mesmo system, mesma pergunta);
+    depois vêm a SQL anterior como resposta do assistente e o erro como nova
+    mensagem do usuário.
+    """
+    return [
+        *build_prompt(question),
+        {"role": "assistant", "content": str(sql or "")},
+        {"role": "user", "content": repair_message(error)},
+    ]
+
+
 # --- extração da SQL -----------------------------------------------------------
 
 # Cerca de abertura (``` ou ~~~, com linguagem opcional), corpo, e a mesma cerca
