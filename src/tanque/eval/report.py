@@ -340,7 +340,7 @@ def _first_line(text: str, limit: int = 200) -> str:
 def render_errors(section: ErrorSection) -> list[str]:
     n_errors = sum(n for _, n in section.counts)
     lines = [
-        f"### `{section.system}` no {section.split}",
+        f"### `{section.system}` (split `{section.split}`)",
         "",
         f"{n_errors} erros em {section.n_items} perguntas. Tipos (heurística por código, "
         "com a classificação manual de `results/error-annotations.json` quando houver):",
