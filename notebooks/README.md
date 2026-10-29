@@ -6,6 +6,7 @@
 | `03_predict.ipynb` | `belasoares/tanque-cheio-predict` (`kaggle/predict/`) | Previsões de um modelo (com adapter opcional) em `dev` ou `test` (M5–M7) |
 | `02_finetune.ipynb` | `belasoares/tanque-cheio-finetune` (`kaggle/finetune/`) | QLoRA do modelo base + previsões do adapter no dev (M6) |
 | `04_test_predict.ipynb` | `belasoares/tanque-cheio-test-predict` (`kaggle/test-predict/`) | Previsões finais no teste: base e base + adapter fundido, na mesma sessão (M7) |
+| `05_large_baselines.ipynb` | `belasoares/tanque-cheio-large` (`kaggle/large/`) | 1,5B (base e ft-v1), 7B, 14B e 32B no dev2, com autocorreção, em 2 T4 (M14) |
 
 Os notebooks instalam o pacote com
 `pip install "tanque @ git+https://github.com/belasoaress/tanque-cheio@<REPO_REF>"`,
@@ -15,7 +16,8 @@ testado sem GPU (`tests/test_infer_local.py`). O teste com um modelo minúsculo 
 (`tests/test_infer_local_hf.py`) precisa de `uv sync --group infer`.
 
 Cada `kernel-metadata.json` aponta para o notebook com `code_file` relativo
-(`../../01_bakeoff.ipynb`) e liga GPU T4 (`machine_shape: NvidiaTeslaT4`) e internet. Os
+(`../../01_bakeoff.ipynb`) e liga GPU (`machine_shape: NvidiaTeslaT4`, que na Kaggle CLI é
+o acelerador "GPU T4 ×2": a sessão recebe 2 T4) e internet. Os
 kernels ficam **privados**: só viram públicos no M6, com aprovação.
 
 > **Regra 5:** executar no Kaggle exige a aprovação da Isabela. Os passos abaixo são para
@@ -245,6 +247,87 @@ interface web: um `kaggle kernels push` com `"is_private": false` criaria uma ve
 nova e treinaria tudo de novo (~3,5 h de GPU). Depois, cole o link em
 `results/training.md` ("Escolha final"). O `tanque-cheio-test-predict` pode ficar público
 do mesmo jeito, se quiser.
+
+## Modelos maiores (M14): `05_large_baselines.ipynb`
+
+Roda, numa sessão com **2 GPUs T4**, os 5 sistemas no `datasets/dev2.jsonl` (113
+perguntas), nesta ordem: `base-qwen2.5-coder-1.5b-instruct` (fp16, 1 GPU),
+`ft-qwen2.5-coder-1.5b-instruct` (adapter v1 do HF, fundido, 1 GPU),
+`base-qwen2.5-coder-7b-instruct` e `base-qwen2.5-coder-14b-instruct` (nf4, 1 GPU) e, por
+último, `base-qwen2.5-coder-32b-instruct` (nf4, 2 GPUs). Gulosa, `max_new_tokens = 384`,
+autocorreção ligada (`RETRY = True`): cada sistema grava `<sistema>__dev2.jsonl`,
+`<sistema>+retry__dev2.jsonl` e um `run-info__...json` para cada. Checkpoints fixados por
+commit na 1ª célula (`MODELS`); configuração, commits e estimativa de tempo em
+`results/large-baselines.md`.
+
+- **Tempo estimado:** ~3 h de GPU (pessimista: ~5 h). O 32B tem limite próprio de
+  `TIME_BUDGET_32B_H = 3` h; se estourar, faltar memória, faltar disco ou a sessão tiver
+  1 GPU só, ele para ou é pulado e o run-info registra (`stopped_reason`, `skipped`,
+  `skip_reason`), sem derrubar os outros (D37).
+- **Checkpoint por item:** cada previsão é gravada assim que sai. Se a sessão cair, rode
+  de novo com a saída da versão anterior como input (abaixo, "Se parar no meio").
+- **Dividir em 2 execuções** (se o ensaio mostrar que não cabe numa sessão): `PART = "a"`
+  (1,5B, ft, 7B, 14B), push, baixar; depois `PART = "b"` (32B), push, baixar.
+
+### Como escolher "GPU T4 x2"
+
+- **Pela CLI:** o `kernel-metadata.json` já tem `"machine_shape": "NvidiaTeslaT4"`, que
+  na documentação da Kaggle CLI é exatamente **"GPU T4 ×2"** (o acelerador padrão de
+  GPU). Não há um valor separado para 2 T4. Para deixar explícito no push:
+  `kaggle kernels push -p notebooks/kaggle/large --accelerator NvidiaTeslaT4` (se a sua
+  versão da CLI não conhecer `--accelerator`, rode `uv tool upgrade kaggle` ou omita a
+  opção: o `machine_shape` basta).
+- **Pela interface web:** no editor do notebook, painel lateral **Settings →
+  Accelerator → GPU T4 x2** (não "GPU P100" nem "GPU T4"), **Internet → On**. Depois
+  *Save Version → Save & Run All (Commit)*.
+- **Para conferir:** a célula de checagem imprime `GPUs visíveis: 2 ['Tesla T4', 'Tesla
+  T4']`. Com 1 só, ela avisa e o 32B é pulado.
+
+### Passos 👤 (PowerShell, na raiz do repositório)
+
+> **Regra 5:** executar no Kaggle exige a aprovação da Isabela.
+
+```powershell
+# 1. main atualizada (com o M14 já no merge)
+git switch main
+git pull
+
+# 2. (opcional, recomendado) ensaio de ~15 min: LIMIT = 3 na 1ª célula do
+#    notebooks/05_large_baselines.ipynb, push, conferir o log e os 10 JSONL, e voltar
+#    para LIMIT = None (sem commitar o LIMIT = 3).
+
+# 3. enviar e executar (cria o kernel privado belasoares/tanque-cheio-large na 1ª vez)
+kaggle kernels push -p notebooks/kaggle/large --accelerator NvidiaTeslaT4
+
+# 4. acompanhar até COMPLETE (ou ERROR); repita de tempos em tempos (~3 h)
+kaggle kernels status belasoares/tanque-cheio-large
+
+# 5. baixar a saída (JSONL, run-info e o log) numa pasta fora do git
+kaggle kernels output belasoares/tanque-cheio-large -p kaggle-large -o
+Get-ChildItem kaggle-large
+
+# 6. copiar as previsões e os run-info do dev2 para results/predictions/
+Copy-Item kaggle-large/*__dev2.jsonl, kaggle-large/run-info__*__dev2.json results/predictions/
+
+# 7. branch, commit e push (sem a pasta kaggle-large/)
+git switch -c m14-results
+git add results/predictions/*__dev2.jsonl results/predictions/run-info__*__dev2.json
+git commit -m "chore(results): previsões dos modelos maiores no dev2 (M14)"
+git push -u origin m14-results
+```
+
+Depois do push, abra o PR (ou avise o agente): a pontuação e a tabela de
+`results/large-baselines.md` saem do comando de relatório do M12, feitas pelo agente.
+**Não** rode `tanque eval score` nos arquivos do dev2 por conta própria: o
+`results/metrics.json` é recalculado e conferido pelo CI. Se o status for `ERROR`, o log
+está em `kaggle-large/*.log`. Se você dividiu em `PART = "a"` e `"b"`, faça os passos 3 a
+6 para cada parte antes do 7 (o `kernels output` baixa só a última versão).
+
+**Se parar no meio** (sessão caiu, limite de 12 h): na página do kernel, abra o editor,
+**Add Input → Notebook Output Files → `tanque-cheio-large`** (a versão anterior) e, na 1ª
+célula, `RESUME_DIR = "/kaggle/input/tanque-cheio-large"` (confira o caminho no painel
+*Input*). *Save & Run All*: os itens já prontos são pulados, e só o que falta roda.
+Volte depois para `RESUME_DIR = None`.
 
 ## Publicação (M8)
 
