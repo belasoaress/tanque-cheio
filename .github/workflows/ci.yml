@@ -61,7 +61,8 @@ jobs:
           enable-cache: true
 
       - name: Install
-        run: uv sync --locked
+        # grupo `chart` (matplotlib): só para o teste de desenho do gráfico EX × custo
+        run: uv sync --locked --group chart
 
       - name: Build database from snapshot
         run: uv run tanque data build --from-parquet snapshot/coletas-2026-09.parquet
@@ -72,11 +73,18 @@ jobs:
       - name: Verify gold (test)
         run: uv run tanque eval verify-gold datasets/test.jsonl
 
+      - name: Verify gold (dev2)
+        run: uv run tanque eval verify-gold datasets/dev2.jsonl
+
       - name: Recompute metrics
         run: uv run tanque eval check-metrics
 
       - name: Report is up to date
         run: uv run tanque eval report --check
 
+      # R22: o PNG leva o hash dos pontos; a conferência não depende de matplotlib.
+      - name: Chart is up to date
+        run: uv run tanque eval chart --check
+
       - name: Tests with the real database
-        run: uv run pytest -q tests/test_data_build.py tests/test_report.py
+        run: uv run pytest -q tests/test_data_build.py tests/test_report.py tests/test_chart.py
