@@ -1,7 +1,8 @@
 # Fine-tuning QLoRA (M6)
 
-> Status: **notebook pronto, nenhuma rodada executada.** Executar no Kaggle e publicar no
-> HF exigem a aprovação da Isabela (regra 5). Passos: `notebooks/README.md`.
+> Status: **rodada 1 concluída (29/10/2026): EX no dev de 14,0% → 74,0%.** O ganho passa
+> muito dos 5 p.p., então não há rodadas extras. Pendente: publicar o adapter no HF e
+> tornar o notebook público (👤, regra 5).
 
 Modelo base: **`Qwen/Qwen2.5-Coder-1.5B-Instruct`** (recomendado no bake-off e confirmado
 pela Isabela; `results/bakeoff.md`). Sistema nas previsões: `ft-qwen2.5-coder-1.5b-instruct`.
@@ -61,32 +62,52 @@ números do `train-log__ft-<modelo>.json` e o EX de
 
 ### Rodada 1: `configs/train.toml` como está
 
-- Commit do repositório: _(pendente)_ · versão do kernel no Kaggle: _(pendente)_
-- Pares: treino _ / val _ / descartados por tamanho _
-- Tempo de GPU: treino _ h (_ s/passo); total da sessão _ h; pico de memória _ GiB
-- Perda final: treino _ · validação _
+- Commit do repositório: `0ccbf83` (antes da reescrita do histórico de 29/10; o conteúdo é o mesmo) · kernel `belasoares/tanque-cheio-finetune`
+- Pares: treino 7.806 / val 411 / descartados por tamanho 0; 13,1% dos tokens entram na perda
+- Tempo de GPU: treino **3,5 h** (12,9 s/passo, 976 passos); total da sessão 3,55 h; pico de memória 2,4 GiB; 18,5 M parâmetros treináveis
+- Perda final: treino 0,0093 (média da rodada) · validação **0,0016**
 
-Curvas de perda:
+Curvas de perda (de `results/training/train-log__ft-qwen2.5-coder-1.5b-instruct.json`):
 
-_(pendente)_
+| Passo | 10 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 976 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Treino | 0,338 | — | 0,0055 | 0,0034 | 0,0028 | 0,0012 | 0,0017 | 0,0017 | 0,0007 | 0,0011 | 0,0014 |
+| Validação | — | 0,0084 | 0,0041 | 0,0030 | 0,0033 | 0,0024 | 0,0019 | 0,0017 | 0,0017 | 0,0016 | 0,0016 |
+
+A perda de validação cai até o passo ~700 e estabiliza; não há sinal de sobreajuste na
+validação. Ela é quase zero porque a validação vem da mesma distribuição de templates do
+treino; o número que importa é o EX no dev, escrito à mão e isolado do treino.
 
 EX no dev:
 
 | Sistema | EX | EX fácil | EX médio | EX difícil | SQL válida | p50 (ms) |
 |---|---|---|---|---|---|---|
 | `base-qwen2.5-coder-1.5b-instruct` | 14,0% | 40,0% | 5,0% | 0,0% | 38,0% | 2.836 |
-| `ft-qwen2.5-coder-1.5b-instruct` (rodada 1) | _ | _ | _ | _ | _ | _ |
+| `ft-qwen2.5-coder-1.5b-instruct` (rodada 1) | **74,0%** | 93,3% | 75,0% | 53,3% | 96,0% | 8.328 |
 
-### Rodada 2 (só se o ganho for < 5 p.p.)
+Erros restantes no dev (13 de 50):
 
-- Mudança em relação à rodada 1: _(pendente)_
-- Tempo de GPU, perdas, EX no dev: _(pendente)_
+- **Forma do resultado (5):** colunas a mais ou a menos que o gold (`nome, uf` dentro de
+  uma UF; preço sem a capital; formato largo em vez de uma linha por produto; ranking
+  sem a coluna pedida) e `date_trunc('quarter')` em vez de `quarter()`.
+- **Lógica nas difíceis (5):** ignorou a lista de bandeiras da pergunta, posição no
+  ranking sem função de janela, acumulado sem soma, "tanto em … quanto em …" e "todos os
+  municípios" interpretados de forma mais simples.
+- **SQL inválida (2):** alias inexistente (`b.bandeira`) e CTE referenciada sem estar no
+  `FROM`.
+- **Valor do banco (1):** bairro com acento (`'Tatuapé'`); no banco ele está em maiúsculas
+  e sem acento.
 
-### Rodada 3 (só se a rodada 2 ainda ficar < 5 p.p.; última)
+**Latência:** p50 de 8,3 s contra 2,8 s do base. A previsão usa o adapter sem fundir
+(`PeftModel`) e o modelo ajustado escreve SQLs completas em vez de respostas curtas e
+erradas. Para o M7: fundir o adapter (`merge_and_unload`) antes de medir a latência no
+teste.
 
-- Mudança: _(pendente)_
-- Tempo de GPU, perdas, EX no dev: _(pendente)_
+### Rodadas 2 e 3
+
+Não executadas: a rodada 1 ganhou 60 p.p. no dev, muito acima do limite de 5 p.p.
 
 ## Escolha final
 
-_(pendente: rodada escolhida, link do adapter no HF e do notebook público no Kaggle)_
+Rodada 1. Adapter no HF: `belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora` _(publicação
+pendente, 👤)_. Notebook público no Kaggle: _(pendente, 👤)_.

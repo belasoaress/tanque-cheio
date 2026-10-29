@@ -85,5 +85,34 @@
       "n_missing": 0,
       "valid_sql_rate": 0.42
     }
+  },
+  "ft-qwen2.5-coder-1.5b-instruct": {
+    "dev": {
+      "blocked_rate": 0.0,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "dev.jsonl",
+      "ex": 0.74,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.5333,
+          "n": 15
+        },
+        "facil": {
+          "ex": 0.9333,
+          "n": 15
+        },
+        "medio": {
+          "ex": 0.75,
+          "n": 20
+        }
+      },
+      "latency_ms": {
+        "p50": 8328.0,
+        "p95": 15833.2
+      },
+      "n": 50,
+      "n_missing": 0,
+      "valid_sql_rate": 0.96
+    }
   }
 }
