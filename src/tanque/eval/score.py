@@ -30,12 +30,19 @@ fora) e `diff_metrics` lista as diferenças contra `metrics.json`: é a regress�
 do CI (`tanque eval check-metrics`, M7).
 
 **Comparações pareadas** (`comparisons`, 5.7 v2): a chave reservada `comparisons` de
-`metrics.json` é uma lista com **todo par de sistemas pontuados no mesmo split**,
-`{a, b, split, n, a_only, b_only, delta_ex, mcnemar_p}`, com `delta_ex = ex(b) − ex(a)`
-e o McNemar exato sobre a EX rígida, pergunta a pergunta (`a_only`/`b_only` = itens que
-só `a`/só `b` acertam). `a` vem antes de `b` na ordem dos sistemas (`base-*`, `ft-*`,
-`ft2-*`, `claude-*`, outros; alfabética dentro de cada grupo), então base → ajustado
-sai sempre nesse sentido. A lista é ordenada por split (`dev`, `test`), `a` e `b`.
+`metrics.json` é uma lista `{a, b, split, n, a_only, b_only, delta_ex, mcnemar_p}`, com
+`delta_ex = ex(b) − ex(a)` e o McNemar exato sobre a EX rígida, pergunta a pergunta
+(`a_only`/`b_only` = itens que só `a`/só `b` acertam). Em cada split entram:
+
+- todo par de sistemas **sem** nova tentativa (single-shot) pontuados nele;
+- cada sistema × a sua versão com nova tentativa (`<s>` × `<s>+retry`, D32, R21).
+
+Pares entre arquivos `+retry` de sistemas diferentes ficam de fora, para a lista não
+crescer com o quadrado do número de sistemas. `a` vem antes de `b` na ordem dos
+sistemas (`system_sort_key`: `base-*`, `ft-*`, `ft2-*`, `claude-*`, outros; dentro de
+cada grupo, por família do modelo e depois por tamanho em bilhões, com `<s>+retry`
+logo depois de `<s>`), então base → ajustado e `<s>` → `<s>+retry` saem sempre nesse
+sentido. A lista é ordenada por split (`dev`, `dev2`, `test`) e por essa ordem.
 Como precisa do acerto item a item de dois sistemas, só `recompute_all` (`tanque eval
 check-metrics --write`) a calcula; `tanque eval score` grava um sistema e deixa a
 lista como está, e o CI acusa se ela ficar desatualizada.
@@ -44,6 +51,7 @@ lista como está, e o CI acusa se ela ficar desatualizada.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
@@ -59,6 +67,8 @@ DIFFICULTIES = ("facil", "medio", "dificil")
 METRICS_FILENAME = "metrics.json"
 COMPARISONS_KEY = "comparisons"
 SYSTEM_ORDER = ("base-", "ft-", "ft2-", "claude-")
+RETRY_SUFFIX = "+retry"
+_SIZE = re.compile(r"-(\d+(?:\.\d+)?)b(?=-|$)")
 
 
 class GoldError(RuntimeError):
@@ -126,12 +136,31 @@ def _ci95(flags: list[bool]) -> list[float] | None:
     return None if ci is None else [round(ci[0], 4), round(ci[1], 4)]
 
 
-def system_sort_key(system: str) -> tuple[int, str]:
-    """Ordem dos sistemas em tabelas e comparações: base, ft, ft2, claude, outros."""
-    for rank, prefix in enumerate(SYSTEM_ORDER):
-        if system.startswith(prefix):
-            return rank, system
-    return len(SYSTEM_ORDER), system
+def is_retry(system: str) -> bool:
+    """Arquivo com uma nova tentativa (`<sistema>+retry`, 5.3 v2)."""
+    return system.endswith(RETRY_SUFFIX)
+
+
+def single_shot(system: str) -> str:
+    """`<sistema>` de `<sistema>+retry` (o próprio nome, se não tiver o sufixo)."""
+    return system[: -len(RETRY_SUFFIX)] if is_retry(system) else system
+
+
+def system_sort_key(system: str) -> tuple[int, str, float, bool, str]:
+    """Ordem dos sistemas: base, ft, ft2, claude, outros; família; tamanho; `+retry` depois.
+
+    `base-qwen2.5-coder-1.5b-instruct` < `-7b-` < `-14b-` < `-32b-` (por tamanho, não
+    alfabética), e `<s>+retry` vem logo depois de `<s>`.
+    """
+    name = single_shot(system)
+    rank = next(
+        (i for i, prefix in enumerate(SYSTEM_ORDER) if name.startswith(prefix)),
+        len(SYSTEM_ORDER),
+    )
+    match = _SIZE.search(name)
+    size = float(match.group(1)) if match else 0.0
+    family = _SIZE.sub("-{}b", name, count=1) if match else name
+    return rank, family, size, is_retry(system), system
 
 
 def system_metrics(data: dict[str, Any]) -> dict[str, Any]:
@@ -313,11 +342,11 @@ def write_metrics(path: str | Path, result: ScoreResult) -> Path:
     return path
 
 
-PREDICTION_SPLITS = ("dev", "test")
+PREDICTION_SPLITS = ("dev", "dev2", "test")
 
 
 def committed_predictions(predictions_dir: str | Path) -> list[tuple[str, Path]]:
-    """(split, arquivo) de `<sistema>__dev.jsonl` e `<sistema>__test.jsonl`, ordenados."""
+    """(split, arquivo) de `<sistema>__{dev,dev2,test}.jsonl` (inclusive `+retry`), ordenados."""
     out = []
     for split in PREDICTION_SPLITS:
         for path in sorted(Path(predictions_dir).glob(f"*__{split}.jsonl")):
@@ -355,7 +384,7 @@ def _reject_reserved(system: str) -> None:
 
 
 def paired_comparisons(results: list[ScoreResult]) -> list[dict[str, Any]]:
-    """Todo par de sistemas no mesmo split (ver o docstring do módulo), com McNemar."""
+    """Pares single-shot e `<s>` × `<s>+retry` por split (docstring do módulo), com McNemar."""
     by_split: dict[str, list[ScoreResult]] = {}
     for r in results:
         by_split.setdefault(r.split, []).append(r)
@@ -363,17 +392,23 @@ def paired_comparisons(results: list[ScoreResult]) -> list[dict[str, Any]]:
     out = []
     for split in sorted(by_split, key=lambda s: (split_rank.get(s, len(split_rank)), s)):
         systems = sorted(by_split[split], key=lambda r: system_sort_key(r.system))
-        for i, a in enumerate(systems):
-            for b in systems[i + 1 :]:
-                a_items = {it.id: it.correct for it in a.items}
-                b_items = {it.id: it.correct for it in b.items}
-                if set(a_items) != set(b_items):
-                    raise PredictionsError(
-                        f"{a.system} e {b.system} no split {split} não têm os mesmos itens"
-                    )
-                ids = sorted(a_items)
-                cmp = stats.paired_comparison([a_items[k] for k in ids], [b_items[k] for k in ids])
-                out.append({"a": a.system, "b": b.system, "split": split, **cmp})
+        pairs = [
+            (a, b)
+            for i, a in enumerate(systems)
+            for b in systems[i + 1 :]
+            if (not is_retry(a.system) and not is_retry(b.system))
+            or (not is_retry(a.system) and b.system == a.system + RETRY_SUFFIX)
+        ]
+        for a, b in pairs:
+            a_items = {it.id: it.correct for it in a.items}
+            b_items = {it.id: it.correct for it in b.items}
+            if set(a_items) != set(b_items):
+                raise PredictionsError(
+                    f"{a.system} e {b.system} no split {split} não têm os mesmos itens"
+                )
+            ids = sorted(a_items)
+            cmp = stats.paired_comparison([a_items[k] for k in ids], [b_items[k] for k in ids])
+            out.append({"a": a.system, "b": b.system, "split": split, **cmp})
     return out
 
 

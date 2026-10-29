@@ -154,6 +154,69 @@ def test_paired_comparisons_cover_every_pair_in_a_split() -> None:
         )
 
 
+def test_paired_comparisons_with_retry_files() -> None:
+    def fake(system: str, flags: list[bool]) -> score.ScoreResult:
+        items = [
+            score.ItemResult(f"i{k}", "facil", True, f, True, False, None, f)
+            for k, f in enumerate(flags)
+        ]
+        return score.ScoreResult(system, "test", {}, items)
+
+    results = [
+        fake("ft-m+retry", [True, True, True, True]),
+        fake("base-m+retry", [True, False, False, False]),
+        fake("ft-m", [True, True, False, False]),
+        fake("base-m", [False, False, False, False]),
+    ]
+    pairs = [(c["a"], c["b"]) for c in score.paired_comparisons(results)]
+    # todos os pares single-shot e cada <s> × <s>+retry; nada entre dois +retry
+    assert pairs == [
+        ("base-m", "base-m+retry"),
+        ("base-m", "ft-m"),
+        ("ft-m", "ft-m+retry"),
+    ]
+
+
+def test_system_sort_key_orders_by_prefix_family_size_and_retry() -> None:
+    systems = [
+        "claude-x",
+        "ft2-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-32b-instruct",
+        "base-qwen2.5-coder-7b-instruct+retry",
+        "outro",
+        "base-qwen2.5-coder-14b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct+retry",
+        "base-qwen2.5-coder-7b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-1.5b-instruct",
+    ]
+    assert sorted(systems, key=score.system_sort_key) == [
+        "base-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-7b-instruct",
+        "base-qwen2.5-coder-7b-instruct+retry",
+        "base-qwen2.5-coder-14b-instruct",
+        "base-qwen2.5-coder-32b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct+retry",
+        "ft2-qwen2.5-coder-1.5b-instruct",
+        "claude-x",
+        "outro",
+    ]
+
+
+def test_committed_predictions_include_dev2_and_retry(tmp_path) -> None:
+    for name in ("a__dev.jsonl", "a__dev2.jsonl", "a+retry__dev2.jsonl", "a__test.jsonl"):
+        (tmp_path / name).write_text("", encoding="utf-8")
+    (tmp_path / "a__dev-sample2.jsonl").write_text("", encoding="utf-8")
+    found = [(split, p.name) for split, p in score.committed_predictions(tmp_path)]
+    assert found == [
+        ("dev", "a__dev.jsonl"),
+        ("dev2", "a+retry__dev2.jsonl"),
+        ("dev2", "a__dev2.jsonl"),
+        ("test", "a__test.jsonl"),
+    ]
+
+
 def test_system_metrics_drops_comparisons() -> None:
     data = {"base-m": {"dev": {}}, "comparisons": []}
     assert score.system_metrics(data) == {"base-m": {"dev": {}}}

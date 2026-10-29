@@ -105,6 +105,14 @@ def report(
         typer.Option(help="Anotações manuais dos erros (padrão: results/error-annotations.json)."),
     ] = None,
     datasets_dir: DatasetsOption = None,
+    final_system: Annotated[
+        str | None,
+        typer.Option(
+            "--final-system",
+            help="Sistema dos exemplos de erro (padrão: [report].final_system ou o ft* "
+            "sem nova tentativa de maior EX no teste).",
+        ),
+    ] = None,
     check: Annotated[
         bool,
         typer.Option(
@@ -125,6 +133,7 @@ def report(
             db_path=db if db is not None else execute.default_db_path(),
             annotations_path=annotations or report_mod.default_annotations_path(),
             spent_usd=float(Ledger().spent()),
+            final_system_name=final_system,
         )
     except (report_mod.ReportInputError, score_mod.GoldError, ValueError) as e:
         typer.echo(f"Erro: {e}", err=True)
