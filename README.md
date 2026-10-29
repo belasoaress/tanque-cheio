@@ -21,11 +21,16 @@ GPU T4 gratuita no Kaggle e US$ 0 de API. Em troca, a latência mediana subiu de
 
 ## Resultados
 
+> **Estes são os números da v1** (M7: 12,0% → 76,0%). A v2 reabre o teste uma vez por
+> sistema, com 384 tokens e uma nova tentativa (M17, D33); quando as previsões da v2
+> forem pontuadas, elas substituem estas em [`results/report.md`](results/report.md). As
+> previsões da v1 ficam em [`results/predictions/v1/`](results/predictions/v1/) e no
+> histórico do git.
+
 Teste com 150 perguntas (50 fáceis, 60 médias, 40 difíceis), escritas e revisadas à mão,
 isoladas do treino. EX = execution accuracy: a SQL gerada é executada e o resultado tem de
-bater com o da SQL de referência. A tabela vem de `uv run tanque eval report`
-([`results/report.md`](results/report.md)); o CI a recalcula a partir das previsões
-salvas em `results/predictions/`.
+bater com o da SQL de referência. A tabela veio de `uv run tanque eval report` sobre as
+previsões da v1, hoje em `results/predictions/v1/`.
 
 | Sistema | N | EX | IC 95% EX | EX tolerante | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
