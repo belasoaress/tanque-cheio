@@ -159,3 +159,45 @@ def test_run_predictions_records_whether_the_adapter_was_merged(random_adapter, 
     rows = read_jsonl(tmp_path / "ft-tiny-qwen2forcausallm-2.5__test-sample2.jsonl")
     assert {r["system"] for r in rows} == {"ft-tiny-qwen2forcausallm-2.5"}
     assert all(r["error"] is None for r in rows)
+
+
+# --- autocorreção (M16) -----------------------------------------------------------
+
+
+def test_run_predictions_with_retry_writes_both_files(tmp_path, m2_toy_db):
+    """Ensaio em CPU do M16: uma execução grava o single-shot e o `+retry`.
+
+    O modelo é aleatório, então a SQL quase sempre falha e a nova tentativa roda
+    de fato (com o prompt de correção pelo chat template real do Qwen2.5).
+    """
+    try:
+        info = local.run_predictions(
+            config.resolve_path("datasets/dev.jsonl"),
+            TINY_MODEL,
+            out_dir=tmp_path,
+            limit=2,
+            dtype="float32",
+            device="cpu",
+            max_new_tokens=8,
+            retry=True,
+            db_path=m2_toy_db,
+            echo=lambda _: None,
+        )
+    except OSError as e:
+        pytest.skip(f"modelo de teste indisponível: {e}")
+    single = read_jsonl(tmp_path / "base-tiny-qwen2forcausallm-2.5__dev-sample2.jsonl")
+    retried = read_jsonl(tmp_path / "base-tiny-qwen2forcausallm-2.5+retry__dev-sample2.jsonl")
+    assert info["retry_system"] == "base-tiny-qwen2forcausallm-2.5+retry"
+    assert info["max_new_tokens"] == 8 and info["retry"] is True
+    assert [r["id"] for r in single] == [r["id"] for r in retried]
+    assert {r["system"] for r in retried} == {"base-tiny-qwen2forcausallm-2.5+retry"}
+    assert info["retry_summary"]["retried"] == sum(r["attempts"] == 2 for r in retried)
+    for s, r in zip(single, retried, strict=True):
+        assert s["error"] is None and r["error"] is None
+        if r["attempts"] == 2:
+            assert r["first_sql"] == s["sql"] and r["first_error"]
+            # o prompt de correção tem o prompt único inteiro mais a SQL e o erro
+            assert r["input_tokens"] > 2 * s["input_tokens"]
+            assert r["latency_ms"] >= s["latency_ms"]
+        else:
+            assert r["sql"] == s["sql"] and r["first_sql"] is None
