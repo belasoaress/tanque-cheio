@@ -26,9 +26,10 @@ trocado ("... em SP em 2025" x "... em MG em 2025") também passam de 85. É o
 critério do plano; o efeito no rendimento aparece em `tanque gen stats`.
 
 **Isolamento.** Este é o único módulo que lê `datasets/dev.jsonl`,
-`datasets/test.jsonl` e `datasets/candidates_reserve.jsonl` (reserva do M3, que
-pode virar dev/teste), sempre em tempo de execução. Nada do conteúdo deles é
-impresso: os relatórios mostram só ids e notas.
+`datasets/test.jsonl`, `datasets/candidates_reserve.jsonl` (reserva do M3, que
+pode virar dev/teste) e `datasets/dev2.jsonl` (dev ampliado do M13), sempre em
+tempo de execução. Nada do conteúdo deles é impresso: os relatórios mostram só
+ids e notas.
 
 Desempenho: `rapidfuzz.process.extractOne` com `score_cutoff` (laço em C++, sem
 numpy): 5 mil x 200 comparações contra a avaliação e ~5 mil x 5 mil no pior caso
@@ -52,7 +53,9 @@ from sqlglot.errors import SqlglotError
 from tanque import config
 
 THRESHOLD = 85
-EVAL_FILES = ("dev.jsonl", "test.jsonl", "candidates_reserve.jsonl")
+# dev2.jsonl (M13, D30) = dev + reserva com ids novos; entra para a checagem cobrir o dev2
+# também depois que a reserva for consumida ou revisada.
+EVAL_FILES = ("dev.jsonl", "test.jsonl", "candidates_reserve.jsonl", "dev2.jsonl")
 # Arquivos que precisam existir para a checagem valer.
 REQUIRED_EVAL_FILES = ("dev.jsonl", "test.jsonl")
 
