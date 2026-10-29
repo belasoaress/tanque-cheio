@@ -220,3 +220,32 @@ Descarte (`d`) quando, mesmo editando, o item não ficaria bom:
 
 Escreva o motivo no prompt de descarte: ele fica em `datasets/discarded.jsonl`
 e ajuda a escolher o substituto da reserva.
+
+---
+
+## 6. Revisão do dev2 (M13)
+
+`datasets/dev2.jsonl` (D30) junta os 50 itens do dev (já revisados, `reviewed:
+true`) e os 63 da reserva (`reviewed: false`), nessa ordem, com ids `dev2-0001`
+a `dev2-0113`, `split: "dev2"` e o campo extra `origin_id` com o id original
+(`dev-0001`... ou `res-0001`...). Todas as SQLs já passaram no `verify-gold` e o
+arquivo já entra no `tanque gen check-leakage`. Falta só a revisão dos 63 itens
+novos (`dev2-0051` em diante, ~1 h), com o mesmo checklist das seções 2 a 5:
+
+```
+uv run python scripts/review.py datasets/dev2.jsonl
+```
+
+A ferramenta pula os itens já revisados, então começa direto no `dev2-0051` e
+retoma de onde parou se você sair com `q`. Ao editar (`e`), não mude `id`,
+`split` nem `origin_id`.
+
+**Descartes não são repostos.** Diferente do dev e do teste, o dev2 não tem cota
+exata: o item descartado sai do arquivo (fica registrado em
+`datasets/discarded.jsonl`, com `"from": "dev2.jsonl"`) e o dev2 fica com o que
+sobrar. Os ids dos demais não mudam; os buracos na numeração são esperados. Não
+mexa em `datasets/dev.jsonl`, `datasets/test.jsonl` nem na reserva.
+
+Ao terminar, avise o agente: ele tira o `xfail` de `test_dev2_all_reviewed` em
+`tests/test_datasets.py`, roda o `verify-gold` e o `check-leakage` de novo e
+registra a distribuição final por nível.

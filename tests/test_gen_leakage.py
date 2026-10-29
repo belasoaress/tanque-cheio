@@ -90,6 +90,18 @@ def test_load_reference_requires_dev_and_test(tmp_path):
     assert len(items) == 3
 
 
+def test_load_reference_includes_dev2(tmp_path):
+    """O dev ampliado do M13 (D30) entra na checagem; se faltar, a checagem não quebra."""
+    write_jsonl(tmp_path / "dev.jsonl", [item(0, "a")])
+    write_jsonl(tmp_path / "test.jsonl", [item(1, "b")])
+    write_jsonl(tmp_path / "dev2.jsonl", [item(2, "Pergunta só do dev ampliado", "SELECT 42")])
+    items, files = leakage.load_reference(tmp_path)
+    assert "dev2.jsonl" in [f.name for f in files]
+    train = [item(9, "pergunta so do dev ampliado")]
+    (c,) = leakage.find_collisions(train, items)
+    assert c.other_id == "x-2"
+
+
 def _random_questions(n, seed):
     rng = random.Random(seed)
     words = (
