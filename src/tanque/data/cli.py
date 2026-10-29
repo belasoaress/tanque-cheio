@@ -22,6 +22,7 @@ from tanque.data.build import (
 )
 from tanque.data.capitals import CAPITALS
 from tanque.data.download import DownloadError, download_all, local_files, sources_from_settings
+from tanque.data.hf_bundle import BundleError, build_bundle
 
 app = typer.Typer(
     help="Dados da ANP: download, normalização e build do banco (M1).",
@@ -163,6 +164,34 @@ def snapshot(
     meta = make_snapshot_meta(parquet.resolve(), db)
     out = write_manifest(meta, snapshot_meta_path(parquet.resolve()))
     typer.echo(f"Registro do snapshot -> {out} (sha256 {meta['sha256']})")
+
+
+@app.command("hf-bundle")
+def hf_bundle(
+    out: Annotated[
+        Path, typer.Option(help="Pasta de upload (apagada e refeita com --force).")
+    ] = Path("dist/hf-dataset"),
+    force: Annotated[bool, typer.Option(help="Apaga a pasta de saída se não estiver vazia.")] = (
+        False
+    ),
+) -> None:
+    """Monta a pasta do dataset no HF (card, train/dev/test, snapshot). Não publica nada."""
+    settings = config.load_settings()
+    root = config.repo_root()
+    out = out if out.is_absolute() else root / out
+    try:
+        files = build_bundle(out, root=root, snapshot=settings["paths"]["snapshot"], force=force)
+    except BundleError as exc:
+        typer.echo(f"Erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    total = sum((out / f).stat().st_size for f in files)
+    typer.echo(f"{len(files)} arquivo(s) em {out} ({total / 1e6:.1f} MB):")
+    for f in files:
+        typer.echo(f"  {f}")
+    typer.echo(
+        "Para publicar (Isabela, regra 5): "
+        f"uv run hf upload belasoares/tanque-cheio {out} . --repo-type dataset"
+    )
 
 
 @app.command()

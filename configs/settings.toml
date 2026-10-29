@@ -33,6 +33,10 @@ license = "Dados abertos da ANP (Lei 12.527/2011; Decreto 8.777/2016), com atrib
 # dados.gov.br (data.amerigeoss.org, "serie-historica-de-precos-de-combustiveis-por-revenda")
 # lista "Creative Commons Attribution"; o rodapé do gov.br (CC BY-ND 3.0) cobre o conteúdo
 # do site, não os dados. dados.gov.br não foi acessível daqui para confirmar.
+# M8 (2026-10-29): nova tentativa sem sucesso (dados.gov.br e www.gov.br fora da rede do
+# agente; a busca só achou o mesmo espelho CKAN). Falta a Isabela abrir o conjunto no
+# dados.gov.br, ler o campo "Licença" e, se confirmar, pôr true aqui e ajustar o
+# `license` do card do dataset (hf/dataset/README.md; ex.: cc-by-4.0).
 license_verified = false
 license_source = "https://data.amerigeoss.org/dataset/serie-historica-de-precos-de-combustiveis-por-revenda"
 schema_doc = "docs/schema.md"

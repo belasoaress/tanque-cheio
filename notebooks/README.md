@@ -245,3 +245,59 @@ interface web: um `kaggle kernels push` com `"is_private": false` criaria uma ve
 nova e treinaria tudo de novo (~3,5 h de GPU). Depois, cole o link em
 `results/training.md` ("Escolha final"). O `tanque-cheio-test-predict` pode ficar público
 do mesmo jeito, se quiser.
+
+## Publicação (M8)
+
+> **Regra 5:** publicar no HF e mudar a visibilidade de um notebook exige a aprovação da
+> Isabela. Os passos abaixo (👤) são para ela, no PowerShell, na raiz do repositório, com
+> o branch do M8 (ou a `main`, depois do merge) atualizado.
+
+Antes de tudo, **confira a licença dos dados da ANP**: abra o conjunto "Série Histórica de
+Preços de Combustíveis" no [dados.gov.br](https://dados.gov.br) e leia o campo
+**Licença**. Se ele disser, por exemplo, "Creative Commons Atribuição", troque no topo de
+`hf/dataset/README.md` as três linhas `license: other`, `license_name` e `license_link`
+por `license: cc-by-4.0` (ou o identificador certo, lista em
+https://huggingface.co/docs/hub/repositories-licenses), ajuste o parágrafo "Licença" do
+card e ponha `license_verified = true` em `configs/settings.toml`. Commite antes de
+publicar.
+
+Login no HF (uma vez; token com permissão de escrita em
+https://huggingface.co/settings/tokens):
+
+```powershell
+uv run hf auth login
+uv run hf auth whoami   # deve mostrar belasoares
+```
+
+**(a) Publicar o dataset** `belasoares/tanque-cheio`:
+
+```powershell
+# monta dist/hf-dataset/: card, data/{train,dev,test}.jsonl, snapshot/ (Parquet + JSON),
+# docs/schema.md e manifest.json; confere o SHA-256 do snapshot. dist/ fica fora do git.
+uv run tanque data hf-bundle --out dist/hf-dataset --force
+Get-ChildItem -Recurse dist/hf-dataset | Select-Object FullName, Length
+
+# cria o repo (público) na primeira vez e sobe a pasta inteira
+uv run hf upload belasoares/tanque-cheio dist/hf-dataset . --repo-type dataset --commit-message "Dataset do tanque-cheio (M8)"
+```
+
+Para olhar antes de abrir ao público, acrescente `--private` no primeiro upload e depois
+mude em *Settings → Change repo visibility* no HF. Na página do dataset, confira se o
+*Dataset Viewer* mostra os configs `pairs` (splits `train`, `dev`, `test`) e `coletas`.
+
+**(b) Atualizar o model card do adapter** (substitui o card provisório; os pesos não
+mudam, então o `ADAPTER_REVISION` do `04_test_predict.ipynb` continua valendo):
+
+```powershell
+uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora hf/model/README.md README.md --commit-message "Model card final (M8)"
+```
+
+**(c) Opcional: tornar público o notebook do bake-off.** Hoje
+`belasoares/tanque-cheio-bakeoff` é privado, por isso o README não o cita. Pela interface
+web: página do kernel → *Settings → Sharing → Public* (não use `kaggle kernels push` com
+`"is_private": false`: isso cria uma versão nova e roda tudo de novo). Se tornar público,
+acrescente o link em `results/bakeoff.md` e na seção "Links" do `README.md`. O mesmo vale
+para `belasoares/tanque-cheio-test-predict`.
+
+Depois de (a) e (b), abra os links da seção "Links" do `README.md` e confira se todos
+respondem.
