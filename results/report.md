@@ -2,14 +2,14 @@
 
 > Gerado por `uv run tanque eval report` a partir de `results/metrics.json`, das previsões em `results/predictions/` e de `results/error-annotations.json`. Não edite à mão: o CI confere com `tanque eval report --check`.
 
-EX = execution accuracy (seção 5.6 do plano); percentuais sobre todos os itens do split. `*` = custo estimado de GPU (ver a nota de método).
+EX = execution accuracy (seção 5.6 do plano), a métrica principal; EX tolerante = aceita colunas a mais na previsão (D28); IC 95% = intervalo de confiança bootstrap (D29). Definições na nota de método. Percentuais sobre todos os itens do split. `*` = custo estimado de GPU.
 
 ## Tabela principal: teste (150 perguntas)
 
-| Sistema | Split | N | EX | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `base-qwen2.5-coder-1.5b-instruct` | test | 150 | 12,0% | 28,0% | 6,7% | 0,0% | 22,0% | 3,3% | 2.638 | 6.518 | 0,2896* |
-| `ft-qwen2.5-coder-1.5b-instruct` | test | 150 | 76,0% | 98,0% | 76,7% | 47,5% | 96,0% | 2,0% | 3.726 | 8.172 | 0,3660* |
+| Sistema | Split | N | EX | IC 95% EX | EX tolerante | IC 95% tolerante | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `base-qwen2.5-coder-1.5b-instruct` | test | 150 | 12,0% | 7,3–17,3% | 12,7% | 8,0–18,0% | 28,0% | 6,7% | 0,0% | 22,0% | 3,3% | 2.638 | 6.518 | 0,2896* |
+| `ft-qwen2.5-coder-1.5b-instruct` | test | 150 | 76,0% | 68,7–82,7% | 83,3% | 77,3–89,3% | 98,0% | 76,7% | 47,5% | 96,0% | 2,0% | 3.726 | 8.172 | 0,3660* |
 
 ## Base → ajustado (teste)
 
@@ -18,16 +18,28 @@ EX = execution accuracy (seção 5.6 do plano); percentuais sobre todos os itens
 | Métrica | Base | Ajustado | Δ |
 |---|---|---|---|
 | EX | 12,0% | 76,0% | +64,0 p.p. |
+| EX tolerante | 12,7% | 83,3% | +70,7 p.p. |
 | EX fácil | 28,0% | 98,0% | +70,0 p.p. |
 | EX médio | 6,7% | 76,7% | +70,0 p.p. |
 | EX difícil | 0,0% | 47,5% | +47,5 p.p. |
+| EX tolerante fácil | 30,0% | 98,0% | +68,0 p.p. |
+| EX tolerante médio | 6,7% | 88,3% | +81,7 p.p. |
+| EX tolerante difícil | 0,0% | 57,5% | +57,5 p.p. |
 | SQL válida | 22,0% | 96,0% | +74,0 p.p. |
 | Bloqueada | 3,3% | 2,0% | −1,3 p.p. |
 | Latência p50 (ms) | 2.638 | 3.726 | +1.089 |
 | Latência p95 (ms) | 6.518 | 8.172 | +1.654 |
 | US$ / 1.000 | 0,2896* | 0,3660* | +0,0763 |
 
+## Comparações pareadas (teste)
+
+| A | B | N | EX A | EX B | Δ EX (B − A) | Só A | Só B | p (McNemar) |
+|---|---|---|---|---|---|---|---|---|
+| `base-qwen2.5-coder-1.5b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 150 | 12,0% | 76,0% | +64,0 p.p. | 0 | 96 | < 0,001 |
+
 ## Erros do modelo ajustado (teste)
+
+Modelo final: `ft-qwen2.5-coder-1.5b-instruct` (o `ft*` sem nova tentativa de maior EX no teste).
 
 ### `ft-qwen2.5-coder-1.5b-instruct` (split `test`)
 
@@ -217,12 +229,23 @@ SELECT m.nome, m.uf, AVG(c.valor_venda) AS preco_medio FROM coletas c JOIN posto
 
 Usado na escolha do modelo e do fine-tuning; não é o resultado final.
 
-| Sistema | Split | N | EX | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| `base-qwen2.5-coder-1.5b-instruct` | dev | 50 | 14,0% | 40,0% | 5,0% | 0,0% | 38,0% | 2,0% | 2.836 | 5.078 | 0,2837* |
-| `base-qwen3-1.7b` | dev | 50 | 8,0% | 20,0% | 0,0% | 6,7% | 24,0% | 12,0% | 7.499 | 11.593 | 0,6771* |
-| `base-smollm3-3b` | dev | 50 | 8,0% | 20,0% | 5,0% | 0,0% | 42,0% | 6,0% | 4.968 | 8.676 | 0,5102* |
-| `ft-qwen2.5-coder-1.5b-instruct` | dev | 50 | 74,0% | 93,3% | 75,0% | 53,3% | 96,0% | 0,0% | 8.328† | 15.833† | 0,7958* |
+| Sistema | Split | N | EX | IC 95% EX | EX tolerante | IC 95% tolerante | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `base-qwen2.5-coder-1.5b-instruct` | dev | 50 | 14,0% | 6,0–24,0% | 16,0% | 6,0–26,0% | 40,0% | 5,0% | 0,0% | 38,0% | 2,0% | 2.836 | 5.078 | 0,2837* |
+| `base-qwen3-1.7b` | dev | 50 | 8,0% | 2,0–16,0% | 10,0% | 2,0–18,0% | 20,0% | 0,0% | 6,7% | 24,0% | 12,0% | 7.499 | 11.593 | 0,6771* |
+| `base-smollm3-3b` | dev | 50 | 8,0% | 2,0–16,0% | 10,0% | 2,0–18,0% | 20,0% | 5,0% | 0,0% | 42,0% | 6,0% | 4.968 | 8.676 | 0,5102* |
+| `ft-qwen2.5-coder-1.5b-instruct` | dev | 50 | 74,0% | 62,0–86,0% | 76,0% | 64,0–86,0% | 93,3% | 75,0% | 53,3% | 96,0% | 0,0% | 8.328† | 15.833† | 0,7958* |
+
+Comparações pareadas no dev:
+
+| A | B | N | EX A | EX B | Δ EX (B − A) | Só A | Só B | p (McNemar) |
+|---|---|---|---|---|---|---|---|---|
+| `base-qwen2.5-coder-1.5b-instruct` | `base-qwen3-1.7b` | 50 | 14,0% | 8,0% | −6,0 p.p. | 4 | 1 | 0,375 |
+| `base-qwen2.5-coder-1.5b-instruct` | `base-smollm3-3b` | 50 | 14,0% | 8,0% | −6,0 p.p. | 4 | 1 | 0,375 |
+| `base-qwen2.5-coder-1.5b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 50 | 14,0% | 74,0% | +60,0 p.p. | 0 | 30 | < 0,001 |
+| `base-qwen3-1.7b` | `base-smollm3-3b` | 50 | 8,0% | 8,0% | ±0,0 p.p. | 1 | 1 | 1,000 |
+| `base-qwen3-1.7b` | `ft-qwen2.5-coder-1.5b-instruct` | 50 | 8,0% | 74,0% | +66,0 p.p. | 1 | 34 | < 0,001 |
+| `base-smollm3-3b` | `ft-qwen2.5-coder-1.5b-instruct` | 50 | 8,0% | 74,0% | +66,0 p.p. | 0 | 33 | < 0,001 |
 
 † Latência medida com o adapter LoRA sem fundir (`PeftModel`, run-info com `adapter_merged` ausente ou falso): não é comparável à do base. No teste o adapter é fundido antes de gerar.
 
@@ -231,7 +254,10 @@ Usado na escolha do modelo e do fine-tuning; não é o resultado final.
 - **Dados:** snapshot fixo `snapshot/coletas-2026-09.parquet` (SHA-256 `55a2b1884665284ac4fc8e770623abb211617ab98c2fed4980e7c475b8a35006`), coletas de 2024-10-01 a 2026-09-30; o CI reconstrói o banco a partir dele e confere contagem e MD5 de cada tabela (D25).
 - **Data de referência:** `2026-09-30` (= `max(data_coleta)`, D14); "último mês" = mês do calendário que a contém (D19).
 - **Prompt único** (`tanque.prompting.build_prompt`, seção 5.4) para todos os sistemas, pelo chat template de cada modelo; decodificação gulosa, `max_new_tokens = 256`, lote de 1 pergunta.
-- **Métrica:** EX = execution accuracy (seção 5.6): a SQL prevista é executada com o guardrail e comparada ao resultado da referência; bloqueio, erro ou falta de previsão contam como erro.
+- **Métrica:** EX = execution accuracy (seção 5.6): a SQL prevista é executada com o guardrail e comparada ao resultado da referência; bloqueio, erro ou falta de previsão contam como erro. É a métrica principal (EX rígida): o número de colunas tem de ser o mesmo da referência.
+- **EX tolerante (secundária, D28; definida antes dos resultados da v2):** acerta quando as colunas da referência estão entre as colunas da previsão, que pode ter colunas a mais (até 6 colunas na previsão), em qualquer ordem, com a mesma escolha de colunas para todas as linhas; depois valem as regras da EX rígida (mesmas linhas, arredondamento a 2 casas, ordem quando a pergunta pede). Toda previsão certa na rígida é certa na tolerante. Mede quantos erros são só de colunas a mais (`results_match_relaxed`, seção 5.6 da v2).
+- **IC 95% (D29):** bootstrap percentil sobre as perguntas do split, 10.000 reamostragens com reposição, seed 42 (`tanque.eval.stats`). Com 150 perguntas, a margem da EX é de cerca de ±7 p.p.
+- **Comparações pareadas (D29):** todo par de sistemas sem nova tentativa pontuados no mesmo split, mais cada sistema × a sua versão `+retry`; pergunta a pergunta, na EX rígida. Só A / Só B = perguntas que só um dos dois acerta; p = teste de McNemar exato (binomial, bilateral) sobre esses pares discordantes. p < 0,05 indica diferença dificilmente explicada pelo acaso.
 - **Modelos locais:** `base-*` (sem treino) e `ft-*` (mesmo base + adapter LoRA do M6, fundido no base antes de gerar), na mesma sessão do Kaggle e na mesma GPU, fp16. Hardware das previsões do teste: `kaggle-t4`. A latência é medida por pergunta, do template à decodificação, numa T4.
 - **Custo por 1.000 perguntas (* = estimativa):** latência média × 1.000 ÷ 3.600.000 ms/h × US$ 0,35/h, o preço de NVIDIA T4 (1 GPU), Google Compute Engine sob demanda, us-central1 em https://cloud.google.com/products/compute/gpus-pricing (consultado em 2026-10-29); não inclui a VM (vCPU e memória), então é um piso. No Kaggle a execução não custou nada; as previsões têm `cost_usd = 0`.
 - **Sem LLM de fronteira por enquanto (D24):** sem crédito de API, o relatório compara só os 2 sistemas locais. `tanque infer claude` continua no repositório; se `results/predictions/claude-*__test.jsonl` for adicionado e pontuado, ele entra nas tabelas sozinho.

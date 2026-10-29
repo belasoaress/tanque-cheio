@@ -1,6 +1,7 @@
-"""Comparação de resultados de execução (seção 5.6).
+"""Comparação de resultados de execução (seção 5.6 da v1 e 5.6 da v2).
 
-`results_match(gold, pred, order_matters)` decide se a previsão acertou.
+`results_match(gold, pred, order_matters)` decide se a previsão acertou (EX rígida,
+a métrica principal). `results_match_relaxed` é a EX tolerante (D28), descrita no fim.
 
 Regras e decisões de borda (documentadas aqui e testadas em tests/test_compare.py):
 
@@ -27,6 +28,23 @@ Regras e decisões de borda (documentadas aqui e testadas em tests/test_compare.
 - Vazio × vazio casa **desde que o número de colunas seja igual** (a regra do
   número de colunas vale também para resultados vazios). Na prática o gold
   nunca é vazio: `tanque eval verify-gold` recusa SQL de referência sem linhas.
+
+EX tolerante (`results_match_relaxed`, 5.6 da v2, D28):
+
+- Se `results_match` é verdadeiro, `results_match_relaxed` também é (é testado
+  primeiro, inclusive com mais de 6 colunas).
+- Senão, a previsão pode ter colunas **a mais**: procura uma escolha injetiva de
+  colunas da previsão, uma para cada coluna do gold, em qualquer ordem, **a mesma
+  para todas as linhas**. Só quando a previsão tem até 6 colunas
+  (`MAX_RELAXED_COLUMNS`); com 7 ou mais, vale só a comparação rígida.
+- Colunas a menos nunca casam. Duas colunas iguais no gold precisam de duas colunas
+  distintas na previsão; colunas repetidas na previsão podem ser qualquer uma.
+- Depois da projeção valem as mesmas regras: valores normalizados, mesmo número
+  de linhas, sequência (`order_matters`) ou multiconjunto, erros e bloqueios falsos.
+- Vazio × vazio casa quando o gold tem no máximo tantas colunas quanto a previsão.
+- Para não testar as 720 escolhas de 6 colunas à toa, cada coluna do gold só é
+  ligada a colunas da previsão com a mesma sequência de valores (`order_matters`)
+  ou o mesmo multiconjunto (sem ordem), condição necessária para casar.
 """
 
 from __future__ import annotations
@@ -43,6 +61,7 @@ from typing import Any
 from tanque.sql.execute import ExecResult
 
 MAX_PERMUTED_COLUMNS = 4
+MAX_RELAXED_COLUMNS = 6
 
 _PRE = Decimal("1e-9")
 _CENTS = Decimal("0.01")
@@ -153,6 +172,62 @@ def results_match(gold: ExecResult, pred: ExecResult, order_matters: bool) -> bo
         candidate = (
             pred_rows if perm == identity else [tuple(r[i] for i in perm) for r in pred_rows]
         )
+        if order_matters:
+            if candidate == gold_rows:
+                return True
+        elif Counter(candidate) == gold_bag:
+            return True
+    return False
+
+
+def _assignments(options: list[list[int]], used: frozenset[int] = frozenset()):
+    """Escolhas injetivas: uma coluna da previsão (de `options[j]`) por coluna do gold."""
+    if not options:
+        yield ()
+        return
+    for k in options[0]:
+        if k not in used:
+            for rest in _assignments(options[1:], used | {k}):
+                yield (k, *rest)
+
+
+def results_match_relaxed(gold: ExecResult, pred: ExecResult, order_matters: bool) -> bool:
+    """EX tolerante (D28): como `results_match`, mas a previsão pode ter colunas a mais."""
+    if gold.error or pred.error or gold.blocked or pred.blocked:
+        return False
+    if results_match(gold, pred, order_matters):
+        return True
+    gold_width, pred_width = _width(gold), _width(pred)
+    if gold_width > pred_width or pred_width > MAX_RELAXED_COLUMNS:
+        return False
+    if not gold.rows and not pred.rows:
+        return True
+    if len(gold.rows) != len(pred.rows):
+        return False
+
+    gold_rows = _canonical(gold.rows)
+    pred_rows = _canonical(pred.rows)
+    if any(len(r) != gold_width for r in gold_rows) or any(len(r) != pred_width for r in pred_rows):
+        return False
+
+    def column(rows: list[tuple[Any, ...]], j: int) -> tuple[Any, ...]:
+        return tuple(r[j] for r in rows)
+
+    def key(col: tuple[Any, ...]) -> Any:
+        return col if order_matters else Counter(col)
+
+    pred_keys = [key(column(pred_rows, k)) for k in range(pred_width)]
+    options = []
+    for j in range(gold_width):
+        gold_key = key(column(gold_rows, j))
+        compatible = [k for k in range(pred_width) if pred_keys[k] == gold_key]
+        if not compatible:
+            return False
+        options.append(compatible)
+
+    gold_bag = None if order_matters else Counter(gold_rows)
+    for chosen in _assignments(options):
+        candidate = [tuple(r[k] for k in chosen) for r in pred_rows]
         if order_matters:
             if candidate == gold_rows:
                 return True

@@ -2,8 +2,9 @@
 
 Fontes, todas versionadas:
 
-- `results/metrics.json` (gravado por `tanque eval score`): tabelas principais e
-  comparação base → ajustado;
+- `results/metrics.json` (gravado por `tanque eval score` e `check-metrics --write`):
+  tabelas principais (EX rígida e tolerante, com IC de 95%), comparação base →
+  ajustado e comparações pareadas com McNemar (`comparisons`, 5.7 v2);
 - `results/predictions/ft-*__test.jsonl` + `datasets/test.jsonl` + o banco: os
   exemplos de erro do modelo ajustado (re-executa as SQLs; ver `errors.py`);
 - `results/error-annotations.json`: classificação manual opcional dos erros;
@@ -12,8 +13,14 @@ Fontes, todas versionadas:
 - `snapshot/coletas-2026-09.json` e `results/spend.jsonl`: nota de método.
 
 Sistemas: todos os de `metrics.json` com o split pedido, na ordem `base-*`, `ft-*`,
-`claude-*`, outros (alfabética dentro de cada grupo). Um terceiro sistema
-(`claude-*__test.jsonl`, D24) entra sozinho quando for pontuado.
+`ft2-*`, `claude-*`, outros (dentro de cada grupo, por família e tamanho do modelo:
+1,5B < 7B < 14B < 32B), cada `<s>+retry` (nova tentativa, D32) logo abaixo de `<s>`. Um
+terceiro sistema (`claude-*__test.jsonl`, D24) entra sozinho quando for pontuado.
+
+**Modelo final dos exemplos de erro:** um só sistema `ft-*`/`ft2-*` sem nova tentativa
+(os arquivos `+retry` ficam de fora, para não repetir exemplos). Padrão: o de maior EX
+rígida no teste (empate: a ordem dos sistemas). Para fixar outro, `--final-system` no
+`tanque eval report` ou `[report].final_system` em `configs/settings.toml`.
 
 **Custo por 1.000 perguntas.** Para sistemas de API, `cost_per_1k_usd` das
 previsões (custo real, pelo `pricing.toml`). Para modelos locais medidos numa T4
@@ -32,7 +39,14 @@ from typing import Any
 
 from tanque import config
 from tanque.eval import errors as errors_mod
-from tanque.eval.score import load_metrics, read_jsonl
+from tanque.eval.score import (
+    COMPARISONS_KEY,
+    is_retry,
+    load_metrics,
+    read_jsonl,
+    system_metrics,
+    system_sort_key,
+)
 from tanque.sql import execute
 
 REPORT_FILENAME = "report.md"
@@ -41,7 +55,6 @@ ESTIMATE_MARK = "*"
 UNMERGED_MARK = "†"
 N_EXAMPLES = 10
 MS_PER_HOUR = 3_600_000
-SYSTEM_ORDER = ("base-", "ft-", "claude-")
 LEVELS = (("facil", "fácil"), ("medio", "médio"), ("dificil", "difícil"))
 
 COLUMNS = (
@@ -49,6 +62,9 @@ COLUMNS = (
     "Split",
     "N",
     "EX",
+    "IC 95% EX",
+    "EX tolerante",
+    "IC 95% tolerante",
     "EX fácil",
     "EX médio",
     "EX difícil",
@@ -83,6 +99,21 @@ def _num(value: Any, places: int) -> str:
     text = f"{float(value):,.{places}f}"
     # Formato brasileiro: ponto para milhar, vírgula para decimal.
     return text.replace(",", "_").replace(".", ",").replace("_", ".")
+
+
+def _ci(value: Any) -> str:
+    if not value:
+        return MISSING
+    lo, hi = value
+    return f"{float(lo) * 100:.1f}–{float(hi) * 100:.1f}%".replace(".", ",")
+
+
+def _p_value(value: Any) -> str:
+    if value is None:
+        return MISSING
+    if float(value) < 0.001:
+        return "< 0,001"
+    return _num(value, 3)
 
 
 def _signed(value: float | None, places: int, unit: str) -> str:
@@ -156,15 +187,9 @@ def _cost_cell(m: dict[str, Any], gpu: GpuPrice | None) -> str:
 # --- tabelas --------------------------------------------------------------------
 
 
-def _system_key(system: str) -> tuple[int, str]:
-    for rank, prefix in enumerate(SYSTEM_ORDER):
-        if system.startswith(prefix):
-            return rank, system
-    return len(SYSTEM_ORDER), system
-
-
 def systems_with(metrics: dict[str, Any], split: str) -> list[str]:
-    return sorted((s for s in metrics if split in metrics[s]), key=_system_key)
+    systems = system_metrics(metrics)
+    return sorted((s for s in systems if split in systems[s]), key=system_sort_key)
 
 
 def _row(
@@ -182,6 +207,9 @@ def _row(
         split,
         str(m["n"]) if m.get("n") is not None else MISSING,
         _pct(m.get("ex")),
+        _ci(m.get("ex_ci95")),
+        _pct(m.get("ex_relaxed")),
+        _ci(m.get("ex_relaxed_ci95")),
         *(_pct((levels.get(key) or {}).get("ex")) for key, _ in LEVELS),
         _pct(m.get("valid_sql_rate")),
         _pct(m.get("blocked_rate")),
@@ -204,15 +232,41 @@ def main_table(
     return _table(COLUMNS, rows) if rows else []
 
 
+FT_PREFIXES = ("ft-", "ft2-")
+
+
 def comparison_pairs(metrics: dict[str, Any], split: str) -> list[tuple[str, str]]:
-    """(base-<m>, ft-<m>) com os dois sistemas pontuados no split."""
+    """(base-<m>, ft-<m>) e (base-<m>, ft2-<m>), com ou sem `+retry`, pontuados no split."""
     pairs = []
     for system in systems_with(metrics, split):
-        if system.startswith("ft-"):
-            base = "base-" + system[len("ft-") :]
-            if split in metrics.get(base, {}):
-                pairs.append((base, system))
+        for prefix in FT_PREFIXES:
+            if system.startswith(prefix):
+                base = "base-" + system[len(prefix) :]
+                if split in metrics.get(base, {}):
+                    pairs.append((base, system))
     return pairs
+
+
+def final_system(
+    metrics: dict[str, Any], candidates: list[str], configured: str | None = None
+) -> str | None:
+    """Sistema dos exemplos de erro: `configured` ou o `ft*` single-shot de maior EX no teste."""
+    singles = [s for s in candidates if not is_retry(s)]
+    if configured:
+        if configured not in singles:
+            raise ReportInputError(
+                f"modelo final {configured!r} sem previsões single-shot no teste "
+                f"(há: {', '.join(singles) or 'nenhum'})"
+            )
+        return configured
+    if not singles:
+        return None
+
+    def ex(system: str) -> float:
+        value = ((system_metrics(metrics).get(system) or {}).get("test") or {}).get("ex")
+        return -1.0 if value is None else float(value)
+
+    return sorted(singles, key=lambda s: (-ex(s), system_sort_key(s)))[0]
 
 
 def comparison_table(
@@ -229,7 +283,12 @@ def comparison_table(
     rows: list[list[str]] = []
     rate_rows = [
         ("EX", ("ex",)),
+        ("EX tolerante", ("ex_relaxed",)),
         *((f"EX {label}", ("ex_by_difficulty", key, "ex")) for key, label in LEVELS),
+        *(
+            (f"EX tolerante {label}", ("ex_by_difficulty", key, "ex_relaxed"))
+            for key, label in LEVELS
+        ),
         ("SQL válida", ("valid_sql_rate",)),
         ("Bloqueada", ("blocked_rate",)),
     ]
@@ -252,6 +311,34 @@ def comparison_table(
         ]
     )
     return _table(("Métrica", "Base", "Ajustado", "Δ"), rows)
+
+
+PAIRED_COLUMNS = ("A", "B", "N", "EX A", "EX B", "Δ EX (B − A)", "Só A", "Só B", "p (McNemar)")
+
+
+def paired_table(metrics: dict[str, Any], split: str) -> list[str]:
+    """Comparações pareadas (`comparisons` de metrics.json) de um split."""
+    systems = system_metrics(metrics)
+    rows = []
+    for c in metrics.get(COMPARISONS_KEY) or []:
+        if c.get("split") != split:
+            continue
+        a, b = str(c["a"]), str(c["b"])
+        delta = c.get("delta_ex")
+        rows.append(
+            [
+                f"`{a}`",
+                f"`{b}`",
+                str(c.get("n", MISSING)),
+                _pct((systems.get(a, {}).get(split) or {}).get("ex")),
+                _pct((systems.get(b, {}).get(split) or {}).get("ex")),
+                _signed(None if delta is None else float(delta) * 100, 1, " p.p."),
+                str(c.get("a_only", MISSING)),
+                str(c.get("b_only", MISSING)),
+                _p_value(c.get("mcnemar_p")),
+            ]
+        )
+    return _table(PAIRED_COLUMNS, rows) if rows else []
 
 
 # --- exemplos de erro -----------------------------------------------------------
@@ -397,6 +484,9 @@ class ReportContext:
     errors: list[ErrorSection] = field(default_factory=list)
     # (sistema, split) cujas previsões usaram o adapter sem fundir (run-info do M6).
     unmerged: frozenset[tuple[str, str]] = frozenset()
+    # Modelo final dos exemplos de erro e se veio da configuração (ou do padrão).
+    final_system: str | None = None
+    final_configured: bool = False
 
 
 def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
@@ -422,13 +512,36 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
         "`max_new_tokens = 256`, lote de 1 pergunta.",
         "- **Métrica:** EX = execution accuracy (seção 5.6): a SQL prevista é executada com "
         "o guardrail e comparada ao resultado da referência; bloqueio, erro ou falta de "
-        "previsão contam como erro.",
+        "previsão contam como erro. É a métrica principal (EX rígida): o número de colunas "
+        "tem de ser o mesmo da referência.",
+        "- **EX tolerante (secundária, D28; definida antes dos resultados da v2):** acerta "
+        "quando as colunas da referência estão entre as colunas da previsão, que pode ter "
+        "colunas a mais (até 6 colunas na previsão), em qualquer ordem, com a mesma escolha "
+        "de colunas para todas as linhas; depois valem as regras da EX rígida (mesmas "
+        "linhas, arredondamento a 2 casas, ordem quando a pergunta pede). Toda previsão "
+        "certa na rígida é certa na tolerante. Mede quantos erros são só de colunas a "
+        "mais (`results_match_relaxed`, seção 5.6 da v2).",
+        "- **IC 95% (D29):** bootstrap percentil sobre as perguntas do split, 10.000 "
+        "reamostragens com reposição, seed 42 (`tanque.eval.stats`). Com 150 perguntas, a "
+        "margem da EX é de cerca de ±7 p.p.",
+        "- **Comparações pareadas (D29):** todo par de sistemas sem nova tentativa pontuados "
+        "no mesmo split, mais cada sistema × a sua versão `+retry`; pergunta a pergunta, na "
+        "EX rígida. Só A / Só B = perguntas que só um dos dois acerta; p = teste de McNemar "
+        "exato (binomial, bilateral) sobre esses pares discordantes. p < 0,05 indica "
+        "diferença dificilmente explicada pelo acaso.",
         "- **Modelos locais:** `base-*` (sem treino) e `ft-*` (mesmo base + adapter LoRA do "
         "M6, fundido no base antes de gerar), na mesma sessão do Kaggle e na mesma GPU, "
         "fp16. Hardware das previsões do teste: "
         + (", ".join(f"`{h}`" for h in hardware) if hardware else MISSING)
         + ". A latência é medida por pergunta, do template à decodificação, numa T4.",
     ]
+    if any(is_retry(s) for s in system_metrics(metrics)):
+        lines.append(
+            "- **Nova tentativa (D32):** as linhas `<sistema>+retry` vêm da mesma execução "
+            "que `<sistema>`: quando a primeira SQL é bloqueada ou dá erro, o modelo recebe a "
+            "mensagem de erro e tenta uma única vez de novo. As duas linhas aparecem juntas, "
+            "com e sem a nova tentativa, e a comparação pareada mostra o ganho (R21)."
+        )
     if ctx.gpu:
         vm = (
             "inclui a VM"
@@ -475,8 +588,10 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
         "previsões em `results/predictions/` e de `results/error-annotations.json`. "
         "Não edite à mão: o CI confere com `tanque eval report --check`.",
         "",
-        "EX = execution accuracy (seção 5.6 do plano); percentuais sobre todos os itens do "
-        f"split. `{ESTIMATE_MARK}` = custo estimado de GPU (ver a nota de método).",
+        "EX = execution accuracy (seção 5.6 do plano), a métrica principal; EX tolerante = "
+        "aceita colunas a mais na previsão (D28); IC 95% = intervalo de confiança bootstrap "
+        "(D29). Definições na nota de método. Percentuais sobre todos os itens do split. "
+        f"`{ESTIMATE_MARK}` = custo estimado de GPU.",
         "",
         "## Tabela principal: teste (150 perguntas)",
         "",
@@ -494,7 +609,20 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
             lines.append("")
     else:
         lines += ["_Pendente: precisa de `base-*` e `ft-*` pontuados no teste._", ""]
+    lines += ["## Comparações pareadas (teste)", ""]
+    lines += paired_table(metrics, "test") or [
+        "_Pendente: precisa de 2 sistemas pontuados no teste (`tanque eval check-metrics "
+        "--write`)._"
+    ]
+    lines.append("")
     lines += ["## Erros do modelo ajustado (teste)", ""]
+    if ctx.final_system:
+        origin = (
+            "escolhido na configuração"
+            if ctx.final_configured
+            else "o `ft*` sem nova tentativa de maior EX no teste"
+        )
+        lines += [f"Modelo final: `{ctx.final_system}` ({origin}).", ""]
     if ctx.errors:
         for section in ctx.errors:
             lines += render_errors(section)
@@ -508,7 +636,26 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
         "",
     ]
     lines += main_table(metrics, "dev", ctx.gpu, ctx.unmerged) or ["_Nenhuma métrica no dev._"]
-    other = sorted({sp for s in metrics for sp in metrics[s]} - {"dev", "test"})
+    dev_pairs = paired_table(metrics, "dev")
+    if dev_pairs:
+        lines += ["", "Comparações pareadas no dev:", "", *dev_pairs]
+    dev2 = main_table(metrics, "dev2", ctx.gpu, ctx.unmerged)
+    if dev2:
+        n_dev2 = {metrics[s]["dev2"].get("n") for s in systems_with(metrics, "dev2")}
+        size = f" ({n_dev2.pop()} perguntas)" if len(n_dev2) == 1 else ""
+        lines += [
+            "",
+            f"## Referência: dev2{size}",
+            "",
+            "Dev ampliado da v2 (D30), usado nas decisões da v2; não é o resultado final.",
+            "",
+            *dev2,
+        ]
+        dev2_pairs = paired_table(metrics, "dev2")
+        if dev2_pairs:
+            lines += ["", "Comparações pareadas no dev2:", "", *dev2_pairs]
+    systems = system_metrics(metrics)
+    other = sorted({sp for s in systems for sp in systems[s]} - {"dev", "dev2", "test"})
     for split in other:
         lines += [
             "",
@@ -516,6 +663,9 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
             "",
             *main_table(metrics, split, ctx.gpu, ctx.unmerged),
         ]
+        pairs = paired_table(metrics, split)
+        if pairs:
+            lines += ["", *pairs]
     if ctx.unmerged:
         lines += [
             "",
@@ -555,6 +705,7 @@ def build_context(
     annotations_path: Path | None,
     settings: dict[str, Any] | None = None,
     spent_usd: float | None = None,
+    final_system_name: str | None = None,
 ) -> ReportContext:
     settings = settings if settings is not None else config.load_settings()
     snapshot_rel = settings.get("paths", {}).get("snapshot")
@@ -571,18 +722,30 @@ def build_context(
         spent_usd=spent_usd,
     )
     ctx.unmerged = unmerged_runs(Path(predictions_dir))
-    ft_files = sorted(Path(predictions_dir).glob("ft-*__test.jsonl"))
-    if ft_files:
+    suffix = "__test.jsonl"
+    ft_files = {
+        path.name[: -len(suffix)]: path
+        for prefix in FT_PREFIXES
+        for path in Path(predictions_dir).glob(f"{prefix}*{suffix}")
+    }
+    configured = final_system_name or (settings.get("report") or {}).get("final_system")
+    ctx.final_system = final_system(metrics, sorted(ft_files), configured)
+    ctx.final_configured = bool(configured)
+    if ctx.final_system:
         if db_path is None or not Path(db_path).is_file():
             raise ReportInputError(
                 f"Banco não encontrado ({db_path}): os exemplos de erro re-executam as SQLs. "
                 "Rode `tanque data build --from-parquet snapshot/coletas-2026-09.parquet`."
             )
         annotations = errors_mod.load_annotations(annotations_path)
-        for path in ft_files:
-            ctx.errors.append(
-                collect_errors(Path(dataset_dir) / "test.jsonl", path, db_path, annotations)
+        ctx.errors.append(
+            collect_errors(
+                Path(dataset_dir) / "test.jsonl",
+                ft_files[ctx.final_system],
+                db_path,
+                annotations,
             )
+        )
     return ctx
 
 
@@ -594,6 +757,7 @@ def render_from_files(
     db_path: str | Path | None = None,
     annotations_path: str | Path | None = None,
     spent_usd: float | None = None,
+    final_system_name: str | None = None,
 ) -> str:
     metrics_path = Path(metrics_path)
     metrics = load_metrics(metrics_path)
@@ -604,6 +768,7 @@ def render_from_files(
         db_path=Path(db_path) if db_path else None,
         annotations_path=Path(annotations_path) if annotations_path else None,
         spent_usd=spent_usd,
+        final_system_name=final_system_name,
     )
     return render(metrics, ctx)
 

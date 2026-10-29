@@ -27,10 +27,10 @@ bater com o da SQL de referência. A tabela vem de `uv run tanque eval report`
 ([`results/report.md`](results/report.md)); o CI a recalcula a partir das previsões
 salvas em `results/predictions/`.
 
-| Sistema | N | EX | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `base-qwen2.5-coder-1.5b-instruct` | 150 | 12,0% | 28,0% | 6,7% | 0,0% | 22,0% | 3,3% | 2.638 | 6.518 | 0,2896* |
-| `ft-qwen2.5-coder-1.5b-instruct` | 150 | 76,0% | 98,0% | 76,7% | 47,5% | 96,0% | 2,0% | 3.726 | 8.172 | 0,3660* |
+| Sistema | N | EX | IC 95% EX | EX tolerante | EX fácil | EX médio | EX difícil | SQL válida | Bloqueada | p50 (ms) | p95 (ms) | US$ / 1.000 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `base-qwen2.5-coder-1.5b-instruct` | 150 | 12,0% | 7,3–17,3% | 12,7% | 28,0% | 6,7% | 0,0% | 22,0% | 3,3% | 2.638 | 6.518 | 0,2896* |
+| `ft-qwen2.5-coder-1.5b-instruct` | 150 | 76,0% | 68,7–82,7% | 83,3% | 98,0% | 76,7% | 47,5% | 96,0% | 2,0% | 3.726 | 8.172 | 0,3660* |
 
 \* Custo estimado: latência média × US$ 0,35 por hora de uma GPU T4 sob demanda no Google
 Cloud (só a GPU, sem a VM; é um piso). No Kaggle não custou nada.
