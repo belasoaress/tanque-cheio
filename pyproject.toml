@@ -41,6 +41,11 @@ infer = [
 train = [
     "trl==1.16.0",
 ]
+# Gráfico EX × custo (M17, R22): `uv sync --group chart` e `tanque eval chart`.
+# A conferência do CI (`tanque eval chart --check`) não precisa dele: lê só o PNG.
+chart = [
+    "matplotlib",
+]
 
 [tool.uv]
 default-groups = ["dev"]
