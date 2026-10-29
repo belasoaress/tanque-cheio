@@ -107,7 +107,12 @@ def test_predictions_with_the_trained_adapter(trained):
             "cost_usd",
             "hardware",
             "error",
+            # campos opcionais da 5.3 v2 (M14)
+            "quantization",
+            "gpus",
+            "peak_gpu_mem_gib",
         }
+        assert (r["quantization"], r["gpus"], r["peak_gpu_mem_gib"]) == (None, 0, None)
 
 
 def test_loss_table_renders_markdown(trained):
