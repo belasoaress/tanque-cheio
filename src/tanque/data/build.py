@@ -7,10 +7,17 @@ conjunto de linhas dá os mesmos IDs, qualquer que seja a ordem nos CSVs.
 
 O banco e o Parquet são escritos em arquivo temporário e renomeados no fim; uma
 falha no meio não deixa um banco pela metade no lugar do anterior.
+
+Snapshot versionado (D25): `snapshot/coletas-2026-09.parquet` é o Parquet
+normalizado do M1, commitado no repositório, e `snapshot/coletas-2026-09.json`
+registra o SHA-256 dele e a contagem + MD5 de cada tabela do banco original.
+`build_from_parquet` reconstrói o banco só a partir do Parquet (sem CSVs nem
+download) e confere as duas coisas; é o que o CI usa.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -223,3 +230,105 @@ def run_pipeline(
     write_schema_doc(paths.db, paths.schema_doc, manifest)
     log(f"[data] schema -> {paths.schema_doc}")
     return manifest
+
+
+# --- snapshot versionado (D25) --------------------------------------------------
+
+SNAPSHOT_META_VERSION = 1
+NULL_MARK = "\\N"
+_PRIMARY_KEYS = {"municipios": "municipio_id", "postos": "posto_id", "coletas": "coleta_id"}
+
+
+class SnapshotError(RuntimeError):
+    """O Parquet ou o banco reconstruído não bate com o registro do snapshot."""
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def table_fingerprints(db_path: Path) -> dict[str, dict[str, Any]]:
+    """`{tabela: {rows, md5}}`: contagem e MD5 do conteúdo, na ordem da chave primária.
+
+    O MD5 é de `string_agg(md5(linha), '' ORDER BY pk)`, em que `linha` junta as
+    colunas (na ordem do schema) convertidas para texto, com `\\N` para NULL. Não
+    depende da formatação de STRUCT do DuckDB, só do cast de cada tipo para VARCHAR.
+    """
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        out: dict[str, dict[str, Any]] = {}
+        for table in TABLES:
+            cols = [
+                r[0]
+                for r in con.execute(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = 'main' AND table_name = ? ORDER BY ordinal_position",
+                    [table],
+                ).fetchall()
+            ]
+            parts = ", ".join(f"coalesce(CAST({c} AS VARCHAR), '{NULL_MARK}')" for c in cols)
+            rows, md5 = con.execute(
+                f"SELECT count(*), md5(coalesce(string_agg(md5(concat_ws('|', {parts})), '' "
+                f"ORDER BY {_PRIMARY_KEYS[table]}), '')) FROM {table}"
+            ).fetchone()
+            out[table] = {"rows": int(rows), "md5": md5}
+    finally:
+        con.close()
+    return out
+
+
+def snapshot_meta_path(parquet: Path) -> Path:
+    """`snapshot/coletas-2026-09.parquet` -> `snapshot/coletas-2026-09.json`."""
+    return Path(parquet).with_suffix(".json")
+
+
+def make_snapshot_meta(parquet: Path, db_path: Path) -> dict[str, Any]:
+    """Registro do snapshot: SHA-256 do Parquet e contagem + MD5 de cada tabela do banco."""
+    parquet = Path(parquet)
+    summary = _db_summary(Path(db_path))
+    return {
+        "snapshot_meta_version": SNAPSHOT_META_VERSION,
+        "parquet": parquet.name,
+        "bytes": parquet.stat().st_size,
+        "sha256": sha256_file(parquet),
+        "period": summary["period"],
+        "tables": table_fingerprints(Path(db_path)),
+    }
+
+
+def read_snapshot_meta(path: Path) -> dict[str, Any]:
+    return json.loads(Path(path).read_text(encoding="utf-8"))
+
+
+def build_from_parquet(
+    parquet: Path, db_path: Path, meta: dict[str, Any] | None = None
+) -> dict[str, dict[str, Any]]:
+    """Constrói o banco a partir do Parquet do snapshot, sem CSVs nem download.
+
+    Com `meta` (o JSON ao lado do Parquet), confere o SHA-256 do arquivo antes e
+    a contagem e o MD5 de cada tabela depois; qualquer diferença levanta
+    `SnapshotError` (e o banco reconstruído é apagado). Devolve as impressões
+    digitais das tabelas.
+    """
+    parquet, db_path = Path(parquet), Path(db_path)
+    if not parquet.is_file():
+        raise SnapshotError(f"Parquet não encontrado: {parquet}")
+    if meta is not None:
+        actual = sha256_file(parquet)
+        if actual != meta["sha256"]:
+            raise SnapshotError(f"SHA-256 do Parquet diverge: {actual} (esperado {meta['sha256']})")
+    build_database(parquet, db_path)
+    prints = table_fingerprints(db_path)
+    if meta is not None and prints != meta["tables"]:
+        diff = {
+            t: {"esperado": meta["tables"].get(t), "obtido": prints.get(t)}
+            for t in TABLES
+            if meta["tables"].get(t) != prints.get(t)
+        }
+        db_path.unlink(missing_ok=True)
+        raise SnapshotError(f"banco reconstruído diverge do snapshot: {diff}")
+    return prints

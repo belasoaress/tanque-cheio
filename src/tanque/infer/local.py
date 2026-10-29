@@ -36,10 +36,15 @@ Decisões:
 - **Precisão:** fp16 por padrão (a T4 não tem bf16 nativo). Sem 4-bit na
   inferência base, para não depender de bitsandbytes e para medir o modelo
   como ele é; o QLoRA do M6 quantiza só no treino.
-- **Adapter (M6):** `adapter_id` (repo do HF ou pasta local, ex.:
+- **Adapter (M6/M7):** `adapter_id` (repo do HF ou pasta local, ex.:
   `/kaggle/working/adapter`) carrega o LoRA com `PeftModel.from_pretrained`
-  sobre o base em fp16, sem fundir; o sistema vira `ft-<modelo>`. Testado em
-  CPU com um adapter treinado na hora (`tests/test_train_smoke.py`).
+  sobre o base em fp16; o sistema vira `ft-<modelo>`. Por padrão
+  (`merge_adapter=True`) os pesos do LoRA são **fundidos** no base
+  (`merge_and_unload()`) antes de gerar: a saída é a mesma (a menos de
+  arredondamento em fp16), mas sem as camadas extras do PEFT a cada passo, o
+  que deixa a latência do `ft` comparável à do `base` (no M6, sem fundir, o p50
+  no dev foi 8,3 s contra 2,8 s). O run-info registra `adapter_merged`.
+  Testado em CPU (`tests/test_infer_local_hf.py`, `tests/test_train_smoke.py`).
 - **Erros:** exceção num item (ex.: falta de memória) vira previsão com
   `error` e o laço continua.
 """
@@ -225,8 +230,14 @@ def load_model(
     dtype: str = "float16",
     device: str = "cuda",
     revision: str | None = None,
+    adapter_revision: str | None = None,
+    merge_adapter: bool = True,
 ) -> tuple[Any, Any]:
-    """(modelo, tokenizer) do Hugging Face, em `dtype`, com o adapter LoRA opcional."""
+    """(modelo, tokenizer) do Hugging Face, em `dtype`, com o adapter LoRA opcional.
+
+    Com adapter e `merge_adapter=True`, devolve o modelo base com o LoRA fundido
+    (um `PreTrainedModel` comum, sem `PeftModel` em volta).
+    """
     import torch
     import transformers
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -242,7 +253,9 @@ def load_model(
     if adapter_id:
         from peft import PeftModel
 
-        model = PeftModel.from_pretrained(model, adapter_id)
+        model = PeftModel.from_pretrained(model, adapter_id, revision=adapter_revision)
+        if merge_adapter:
+            model = model.merge_and_unload()
     model.eval()
     return model, tokenizer
 
@@ -414,6 +427,8 @@ def run_predictions(
     out_dir: str | Path,
     adapter_id: str | None = None,
     revision: str | None = None,
+    adapter_revision: str | None = None,
+    merge_adapter: bool = True,
     system: str | None = None,
     limit: int | None = None,
     dtype: str = "float16",
@@ -442,8 +457,15 @@ def run_predictions(
 
     started = time.time()
     model, tokenizer = load_model(
-        model_id, adapter_id, dtype=dtype, device=device, revision=revision
+        model_id,
+        adapter_id,
+        dtype=dtype,
+        device=device,
+        revision=revision,
+        adapter_revision=adapter_revision,
+        merge_adapter=merge_adapter,
     )
+    adapter_merged = bool(adapter_id) and merge_adapter
     load_s = round(time.time() - started, 1)
     hardware = hardware_label(_device_name(device))
     first_messages = _default_build_prompt(items[0]["question"])
@@ -451,7 +473,8 @@ def run_predictions(
     echo(
         f"{system}: {len(items)} itens de {dataset_path.name}, {hardware}, {dtype}; "
         f"system {'junto ao user' if first.system_merged else 'como role system'}; "
-        f"modelo carregado em {load_s} s"
+        + (f"adapter {'fundido' if adapter_merged else 'sem fundir'}; " if adapter_id else "")
+        + f"modelo carregado em {load_s} s"
     )
     gen = HFGenerator(model, tokenizer, max_new_tokens=max_new_tokens)
     try:
@@ -474,6 +497,11 @@ def run_predictions(
     model_revision, revision_error = _resolved_revision(model_id, revision)
     if revision_error:
         echo(f"Aviso: commit do checkpoint não resolvido ({revision_error})")
+    adapter_commit, adapter_error = None, None
+    if adapter_id and not Path(adapter_id).is_dir():
+        adapter_commit, adapter_error = _resolved_revision(adapter_id, adapter_revision)
+        if adapter_error:
+            echo(f"Aviso: commit do adapter não resolvido ({adapter_error})")
     echo(f"{system}: {summary} -> {path}")
     return {
         "system": system,
@@ -483,6 +511,9 @@ def run_predictions(
         "model_revision": model_revision,
         "model_revision_error": revision_error,
         "adapter_id": adapter_id,
+        "adapter_revision": adapter_commit,
+        "adapter_revision_error": adapter_error,
+        "adapter_merged": adapter_merged,
         "dtype": dtype,
         "hardware": hardware,
         "max_new_tokens": max_new_tokens,

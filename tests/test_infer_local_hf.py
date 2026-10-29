@@ -95,3 +95,67 @@ def test_run_predictions_is_what_the_notebooks_call(tmp_path):
     assert info["versions"]["transformers"]
     rows = read_jsonl(path)
     assert {r["system"] for r in rows} == {"base-tiny-qwen2forcausallm-2.5"}
+
+
+# --- adapter fundido (M7) ---------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def random_adapter(tmp_path_factory, tiny):  # `tiny` pula o teste sem rede
+    """Adapter LoRA aleatório (B != 0) sobre o modelo minúsculo, salvo em disco."""
+    peft = pytest.importorskip("peft")
+    cfg = peft.LoraConfig(
+        r=4, lora_alpha=8, target_modules=["q_proj", "v_proj"], init_lora_weights=False
+    )
+    path = tmp_path_factory.mktemp("adapter") / "adapter"
+    wrapped = peft.get_peft_model(
+        local.load_model(TINY_MODEL, dtype="float32", device="cpu")[0], cfg
+    )
+    wrapped.save_pretrained(str(path))
+    return path
+
+
+def _logits(model, tokenizer):
+    import torch
+
+    enc = tokenizer("SELECT avg(valor_venda) FROM coletas", return_tensors="pt")
+    with torch.inference_mode():
+        return model(**enc).logits
+
+
+def test_adapter_is_merged_by_default_and_gives_the_same_logits(random_adapter):
+    import torch
+    from peft import PeftModel
+
+    base, tokenizer = local.load_model(TINY_MODEL, dtype="float32", device="cpu")
+    merged, _ = local.load_model(TINY_MODEL, str(random_adapter), dtype="float32", device="cpu")
+    unmerged, _ = local.load_model(
+        TINY_MODEL, str(random_adapter), dtype="float32", device="cpu", merge_adapter=False
+    )
+    assert not isinstance(merged, PeftModel)
+    assert isinstance(unmerged, PeftModel)
+    lm, lu, lb = (_logits(m, tokenizer) for m in (merged, unmerged, base))
+    assert torch.allclose(lm, lu, atol=1e-4)
+    assert not torch.allclose(lm, lb, atol=1e-4)  # o adapter muda a saída de fato
+
+
+@pytest.mark.parametrize("merge", [True, False])
+def test_run_predictions_records_whether_the_adapter_was_merged(random_adapter, tmp_path, merge):
+    info = local.run_predictions(
+        config.resolve_path("datasets/test.jsonl"),
+        TINY_MODEL,
+        out_dir=tmp_path,
+        adapter_id=str(random_adapter),
+        merge_adapter=merge,
+        limit=2,
+        dtype="float32",
+        device="cpu",
+        max_new_tokens=4,
+        echo=lambda _: None,
+    )
+    assert info["adapter_merged"] is merge
+    assert info["adapter_revision"] is None  # pasta local: sem commit do HF
+    assert info["split"] == "test"
+    rows = read_jsonl(tmp_path / "ft-tiny-qwen2forcausallm-2.5__test-sample2.jsonl")
+    assert {r["system"] for r in rows} == {"ft-tiny-qwen2forcausallm-2.5"}
+    assert all(r["error"] is None for r in rows)

@@ -11,11 +11,19 @@ Métricas (todas sobre os `n` itens do dataset):
 - `valid_sql_rate`: fração com SQL que passou no guardrail e executou sem erro
   (item sem previsão ou com `error` de geração conta como inválido);
 - `blocked_rate`: fração bloqueada pelo guardrail;
-- `latency_ms`: p50 e p95 dos `latency_ms` das previsões (interpolação linear);
-- `cost_per_1k_usd`: `soma(cost_usd) / n * 1000`.
+- `latency_ms`: p50 e p95 dos `latency_ms` das previsões (interpolação linear) e a
+  média (`mean`), usada na estimativa de custo de GPU do relatório (M7);
+- `cost_per_1k_usd`: `soma(cost_usd) / n * 1000` (custo de API; 0 para os modelos
+  locais, cujo custo de GPU é estimado só no relatório);
+- `hardware`: lista ordenada dos `hardware` das previsões (ex.: `["kaggle-t4"]`).
 
 `write_metrics` grava em `results/metrics.json` como `{system: {split: métricas}}`,
 com chaves ordenadas e sem horário, para o CI poder comparar o arquivo byte a byte.
+
+`recompute_all` recalcula as métricas de todas as previsões commitadas
+(`results/predictions/<sistema>__{dev,test}.jsonl`; amostras `-sampleN` ficam de
+fora) e `diff_metrics` lista as diferenças contra `metrics.json`: é a regressão
+do CI (`tanque eval check-metrics`, M7).
 """
 
 from __future__ import annotations
@@ -221,6 +229,7 @@ def score(
     present = [preds[r.id] for r in results if r.has_prediction]
     latencies = [float(p["latency_ms"]) for p in present if p.get("latency_ms") is not None]
     p50, p95 = percentile(latencies, 50), percentile(latencies, 95)
+    mean = sum(latencies) / len(latencies) if latencies else None
     total_cost = sum(float(p.get("cost_usd") or 0.0) for p in present)
 
     metrics = {
@@ -234,8 +243,10 @@ def score(
         "latency_ms": {
             "p50": None if p50 is None else round(p50, 1),
             "p95": None if p95 is None else round(p95, 1),
+            "mean": None if mean is None else round(mean, 1),
         },
         "cost_per_1k_usd": round(total_cost / n * 1000, 6),
+        "hardware": sorted({str(p["hardware"]) for p in present if p.get("hardware")}),
     }
     return ScoreResult(system, _split_of(items, dataset_path), metrics, results)
 
@@ -257,6 +268,62 @@ def write_metrics(path: str | Path, result: ScoreResult) -> Path:
     path = Path(path)
     data = load_metrics(path)
     data.setdefault(result.system, {})[result.split] = result.metrics
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        f.write(dump_json(data))
+    return path
+
+
+PREDICTION_SPLITS = ("dev", "test")
+
+
+def committed_predictions(predictions_dir: str | Path) -> list[tuple[str, Path]]:
+    """(split, arquivo) de `<sistema>__dev.jsonl` e `<sistema>__test.jsonl`, ordenados."""
+    out = []
+    for split in PREDICTION_SPLITS:
+        for path in sorted(Path(predictions_dir).glob(f"*__{split}.jsonl")):
+            out.append((split, path))
+    return out
+
+
+def recompute_all(
+    predictions_dir: str | Path,
+    dataset_dir: str | Path,
+    db_path: str | Path | None = None,
+) -> dict[str, Any]:
+    """`{system: {split: métricas}}` recalculado de todas as previsões commitadas."""
+    data: dict[str, Any] = {}
+    for split, path in committed_predictions(predictions_dir):
+        result = score(Path(dataset_dir) / f"{split}.jsonl", path, db_path=db_path)
+        expected_system = path.name[: -len(f"__{split}.jsonl")]
+        if result.system != expected_system:
+            raise PredictionsError(
+                f"{path.name}: `system` = {result.system!r} não bate com o nome do arquivo"
+            )
+        data.setdefault(result.system, {})[result.split] = result.metrics
+    return data
+
+
+def diff_metrics(expected: Any, actual: Any, path: str = "") -> list[str]:
+    """Diferenças entre dois `metrics.json` (chaves ausentes, sobrando ou com outro valor)."""
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        out = []
+        for key in sorted(set(expected) | set(actual)):
+            where = f"{path}.{key}" if path else str(key)
+            if key not in actual:
+                out.append(f"{where}: está em metrics.json, mas não foi recalculado")
+            elif key not in expected:
+                out.append(f"{where}: recalculado, mas ausente de metrics.json")
+            else:
+                out.extend(diff_metrics(expected[key], actual[key], where))
+        return out
+    if expected != actual:
+        return [f"{path}: metrics.json = {expected!r}, recalculado = {actual!r}"]
+    return []
+
+
+def write_all_metrics(path: str | Path, data: dict[str, Any]) -> Path:
+    path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as f:
         f.write(dump_json(data))

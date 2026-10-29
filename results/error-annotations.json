@@ -1,0 +1,4 @@
+{
+  "_doc": "Classificação manual (opcional) dos erros do modelo ajustado no teste, lida por `tanque eval report`. Cada entrada sobrescreve a heurística de src/tanque/eval/errors.py. Formato: \"annotations\": {\"test-0042\": {\"type\": \"join\", \"note\": \"passou por postos.uf\"}}. Tipos: geracao, bloqueada, sql_invalida, forma, ordenacao, join, agregacao, filtro_data, filtro_valor, logica. Depois de editar, rode `uv run tanque eval report` e commite os dois arquivos.",
+  "annotations": {}
+}

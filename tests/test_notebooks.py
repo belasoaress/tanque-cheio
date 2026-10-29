@@ -16,6 +16,7 @@ KERNELS = {
     "bakeoff": ("belasoares/tanque-cheio-bakeoff", "01_bakeoff.ipynb"),
     "predict": ("belasoares/tanque-cheio-predict", "03_predict.ipynb"),
     "finetune": ("belasoares/tanque-cheio-finetune", "02_finetune.ipynb"),
+    "test-predict": ("belasoares/tanque-cheio-test-predict", "04_test_predict.ipynb"),
 }
 PARAMS = {
     "01_bakeoff.ipynb": {"REPO_REF", "DATASET", "LIMIT", "CANDIDATES", "OUT_DIR"},
@@ -28,6 +29,18 @@ PARAMS = {
         "LIMIT",
         "OUT_DIR",
     },
+    "04_test_predict.ipynb": {
+        "REPO_REF",
+        "MODEL_ID",
+        "MODEL_REVISION",
+        "ADAPTER_ID",
+        "ADAPTER_REVISION",
+        "MERGE_ADAPTER",
+        "DATASET",
+        "LIMIT",
+        "MAX_NEW_TOKENS",
+        "OUT_DIR",
+    },
     "02_finetune.ipynb": {
         "REPO_REF",
         "CONFIG",
@@ -38,7 +51,7 @@ PARAMS = {
     },
 }
 # Notebooks só de inferência: sem 4-bit nem bitsandbytes.
-INFERENCE_NOTEBOOKS = ["01_bakeoff.ipynb", "03_predict.ipynb"]
+INFERENCE_NOTEBOOKS = ["01_bakeoff.ipynb", "03_predict.ipynb", "04_test_predict.ipynb"]
 
 
 def load_notebook(name: str) -> dict:
@@ -146,17 +159,17 @@ def test_finetune_notebook_uses_the_package_and_never_the_test_set():
             assert cell["outputs"] == [] and cell["execution_count"] is None
 
 
-def test_finetune_uses_a_single_gpu_before_importing_torch():
-    # O Kaggle pode dar 2 T4; o SFTTrainer recusa DataParallel.
-    cells = [
-        source(c) for c in load_notebook("02_finetune.ipynb")["cells"] if c["cell_type"] == "code"
-    ]
+@pytest.mark.parametrize("name", ["02_finetune.ipynb", "04_test_predict.ipynb"])
+def test_single_gpu_before_importing_torch(name):
+    # O Kaggle pode dar 2 T4; o SFTTrainer recusa DataParallel, e no teste final os dois
+    # sistemas precisam rodar na mesma GPU.
+    cells = [source(c) for c in load_notebook(name)["cells"] if c["cell_type"] == "code"]
     pin = next(i for i, c in enumerate(cells) if 'os.environ["CUDA_VISIBLE_DEVICES"] = "0"' in c)
     first_torch = next(i for i, c in enumerate(cells) if "import torch" in c)
     assert pin < first_torch
 
 
-@pytest.mark.parametrize("name", ["02_finetune.ipynb", "03_predict.ipynb"])
+@pytest.mark.parametrize("name", ["02_finetune.ipynb", "03_predict.ipynb", "04_test_predict.ipynb"])
 def test_adapter_notebooks_drop_torchao_and_fail_fast(name):
     # A imagem do Kaggle traz torchao 0.10; o peft recusa carregar adapters com ele.
     cells = [source(c) for c in load_notebook(name)["cells"] if c["cell_type"] == "code"]
@@ -171,11 +184,55 @@ def locked_versions() -> dict[str, str]:
     return dict(re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', lock))
 
 
-def test_finetune_pins_match_the_lock_used_by_the_cpu_smoke_test():
-    text = notebook_text("02_finetune.ipynb")
+@pytest.mark.parametrize(
+    ("name", "required"),
+    [
+        (
+            "02_finetune.ipynb",
+            {"transformers", "peft", "trl", "accelerate", "datasets", "bitsandbytes"},
+        ),
+        ("04_test_predict.ipynb", {"transformers", "peft", "accelerate"}),
+    ],
+)
+def test_pins_match_the_lock_used_by_the_cpu_smoke_test(name, required):
+    text = notebook_text(name)
     pins = dict(re.findall(r'"([a-z]+)==([0-9][^"]*)"', text))
-    assert {"transformers", "peft", "trl", "accelerate", "datasets", "bitsandbytes"} <= set(pins)
+    assert required <= set(pins)
     locked = locked_versions()
     for name, version in pins.items():
         if name in locked:  # bitsandbytes não está no lock (não roda em CPU)
             assert locked[name] == version, name
+
+
+# --- 04_test_predict (M7) -------------------------------------------------------
+
+DEV_RUN_INFO = "results/predictions/run-info__ft-qwen2.5-coder-1.5b-instruct__dev.json"
+
+
+def test_test_predict_parameters_defaults():
+    params = parameters("04_test_predict.ipynb")
+    assert params["REPO_REF"] == "main"
+    assert params["DATASET"] == "test" and params["LIMIT"] is None
+    assert params["MAX_NEW_TOKENS"] == 256 and params["DTYPE"] == "float16"
+    assert params["MERGE_ADAPTER"] is True
+    assert params["ADAPTER_ID"] == "belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora"
+    assert re.fullmatch(r"[0-9a-f]{40}", params["ADAPTER_REVISION"])
+    assert params["OUT_DIR"] == "/kaggle/working"
+    # mesmo modelo e mesmo commit do checkpoint usados no fine-tuning (M6)
+    dev = json.loads(config.resolve_path(DEV_RUN_INFO).read_text(encoding="utf-8"))
+    assert params["MODEL_ID"] == dev["model_id"]
+    assert params["MODEL_REVISION"] == dev["model_revision"]
+    train = config.resolve_path("configs/train.toml").read_text(encoding="utf-8")
+    assert f'"{params["MODEL_ID"]}"' in train
+
+
+def test_test_predict_runs_base_and_ft_in_one_session():
+    text = notebook_text("04_test_predict.ipynb")
+    assert text.count("local.run_predictions(") == 1  # um laço sobre os dois sistemas
+    assert '{"adapter_id": None, "adapter_revision": None}' in text
+    assert '{"adapter_id": ADAPTER_ID, "adapter_revision": ADAPTER_REVISION}' in text
+    assert "merge_adapter=MERGE_ADAPTER" in text
+    assert "max_new_tokens=MAX_NEW_TOKENS" in text
+    assert 'f"datasets/{DATASET}.jsonl"' in text
+    assert "run-info__" in text and "repo_commit=REPO_COMMIT" in text
+    assert "dev.jsonl" not in text and "PUSH_TO_HUB" not in text

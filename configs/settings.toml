@@ -6,6 +6,9 @@ raw_dir = "data/raw"
 parquet_dir = "data/parquet"
 db_path = "data/tanque.duckdb"
 manifest = "data/manifest.json"
+# Snapshot versionado (D25): Parquet normalizado do M1, commitado; o JSON ao lado guarda o
+# SHA-256 e a contagem + MD5 de cada tabela. `tanque data build --from-parquet <snapshot>`.
+snapshot = "snapshot/coletas-2026-09.parquet"
 datasets_dir = "datasets"
 results_dir = "results"
 predictions_dir = "results/predictions"
@@ -284,3 +287,20 @@ test = 150
 
 [budget]
 budget_usd = 10.0
+
+[gpu_cost]
+# Custo estimado do modelo pequeno por 1.000 perguntas (M7), calculado só no relatório:
+#   US$/1.000 = latência média (ms) × 1.000 perguntas / 3.600.000 ms/h × gpu_hour_usd
+# As previsões continuam com cost_usd = 0 (formato 5.3): o Kaggle não cobra.
+# Preço de referência: 1 GPU NVIDIA T4 sob demanda no Compute Engine, região Iowa
+# (us-central1), tabela "Other GPU models" da página oficial de preços de GPU do Google
+# Cloud, lida em 2026-10-29: US$ 0,35 por GPU por hora (compromisso de 1 ano: 0,22;
+# 3 anos: 0,16). É SÓ a GPU: a página diz que cada GPU soma ao custo do tipo de máquina
+# (vCPU e memória da VM não entram), então a estimativa é um piso.
+gpu_hour_usd = 0.35
+gpu = "NVIDIA T4 (1 GPU), Google Compute Engine sob demanda, us-central1"
+includes_vm = false
+source_url = "https://cloud.google.com/products/compute/gpus-pricing"
+checked_on = 2026-10-29
+# Previsões com estes `hardware` recebem a estimativa (latência medida numa T4).
+hardware = ["kaggle-t4"]

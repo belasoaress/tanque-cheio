@@ -3,7 +3,7 @@
 .env.*
 !.env.example
 
-# Dados locais (o snapshot é gerado por `tanque data build`)
+# Dados locais (o banco é gerado por `tanque data build`; o snapshot versionado fica em snapshot/, D25)
 data/*
 !data/manifest.json
 
