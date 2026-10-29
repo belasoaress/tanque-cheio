@@ -9,7 +9,7 @@ Total API spend: US$ 0; every number below is recomputed by CI from saved predic
 ---
 
 O tanque-cheio recebe uma pergunta em português sobre preços de combustíveis no Brasil
-("Em quais capitais o etanol compensou em todos os meses de 2026?"), gera uma consulta SQL,
+("Em quais capitais o etanol compensou em todos os meses de 2025?"), gera uma consulta SQL,
 executa-a com segurança sobre um snapshot dos dados da ANP e devolve a tabela, com a SQL
 visível. O modelo é o Qwen2.5-Coder-1.5B-Instruct, pequeno o bastante para rodar numa GPU
 barata, ajustado com QLoRA.
