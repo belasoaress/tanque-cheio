@@ -156,6 +156,16 @@ def test_finetune_uses_a_single_gpu_before_importing_torch():
     assert pin < first_torch
 
 
+@pytest.mark.parametrize("name", ["02_finetune.ipynb", "03_predict.ipynb"])
+def test_adapter_notebooks_drop_torchao_and_fail_fast(name):
+    # A imagem do Kaggle traz torchao 0.10; o peft recusa carregar adapters com ele.
+    cells = [source(c) for c in load_notebook(name)["cells"] if c["cell_type"] == "code"]
+    uninstall = next(i for i, c in enumerate(cells) if '"uninstall", "-y", "-q", "torchao"' in c)
+    check = next(i for i, c in enumerate(cells) if "is_torchao_available()" in c)
+    first_torch = next(i for i, c in enumerate(cells) if "import torch" in c)
+    assert uninstall < first_torch <= check
+
+
 def locked_versions() -> dict[str, str]:
     lock = config.resolve_path("uv.lock").read_text(encoding="utf-8")
     return dict(re.findall(r'\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', lock))
