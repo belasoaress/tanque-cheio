@@ -1,0 +1,79 @@
+{
+  "system": "base-qwen2.5-coder-7b-instruct",
+  "split": "dev2",
+  "path": "/kaggle/working/base-qwen2.5-coder-7b-instruct__dev2.jsonl",
+  "model_id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "model_revision": "c03e6d358207e414f1eca0bb1891e29f1db0e242",
+  "model_revision_error": null,
+  "adapter_id": null,
+  "adapter_revision": null,
+  "adapter_revision_error": null,
+  "adapter_merged": false,
+  "dtype": "float16",
+  "quantization": "nf4",
+  "device_map": {
+    "": 0
+  },
+  "max_memory": null,
+  "gpus": 1,
+  "gpu_indices": [
+    0
+  ],
+  "peak_gpu_mem_gib": 5.73,
+  "hardware": "kaggle-t4",
+  "max_new_tokens": 384,
+  "chat_template_kwargs": {},
+  "system_suffix": "",
+  "system_merged_into_user": false,
+  "retry": true,
+  "db_path": null,
+  "limit": null,
+  "n_items": 113,
+  "completed": 113,
+  "resumed": 0,
+  "time_budget_s": null,
+  "stopped_reason": null,
+  "load_s": 112.8,
+  "total_s": 1635.5,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.21.0",
+    "peft": "0.21.2",
+    "accelerate": "1.15.0"
+  },
+  "summary": {
+    "n": 113,
+    "errors": 0,
+    "empty_sql": 0,
+    "hit_max_new_tokens": 4,
+    "p50_latency_ms": 9514,
+    "mean_input_tokens": 795.8053097345132
+  },
+  "retry_system": "base-qwen2.5-coder-7b-instruct+retry",
+  "retry_path": "/kaggle/working/base-qwen2.5-coder-7b-instruct+retry__dev2.jsonl",
+  "retry_summary": {
+    "n": 113,
+    "errors": 0,
+    "empty_sql": 0,
+    "p50_latency_ms": 11128,
+    "mean_input_tokens": 1134.3008849557523,
+    "retried": 37,
+    "first_blocked": 4,
+    "first_exec_error": 33,
+    "retry_generation_errors": 0
+  },
+  "skipped": false,
+  "gpus_requested": 1,
+  "model_source": "official",
+  "requested_model_id": "Qwen/Qwen2.5-Coder-7B-Instruct",
+  "requested_revision": "c03e6d358207e414f1eca0bb1891e29f1db0e242",
+  "time_budget_h": null,
+  "repo_ref": "main",
+  "repo_commit": "83adebbce5f1ce2ea5be953c27db3f3659af773c",
+  "part": "all",
+  "session_order": 3,
+  "gpu_names": [
+    "Tesla T4",
+    "Tesla T4"
+  ]
+}

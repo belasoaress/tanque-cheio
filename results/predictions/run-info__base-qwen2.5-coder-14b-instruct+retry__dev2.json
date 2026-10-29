@@ -1,0 +1,70 @@
+{
+  "system": "base-qwen2.5-coder-14b-instruct+retry",
+  "split": "dev2",
+  "path": "/kaggle/working/base-qwen2.5-coder-14b-instruct+retry__dev2.jsonl",
+  "model_id": "Qwen/Qwen2.5-Coder-14B-Instruct",
+  "model_revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+  "model_revision_error": null,
+  "adapter_id": null,
+  "adapter_revision": null,
+  "adapter_revision_error": null,
+  "adapter_merged": false,
+  "dtype": "float16",
+  "quantization": "nf4",
+  "device_map": {
+    "": 0
+  },
+  "max_memory": null,
+  "gpus": 1,
+  "gpu_indices": [
+    0
+  ],
+  "peak_gpu_mem_gib": 10.21,
+  "hardware": "kaggle-t4",
+  "max_new_tokens": 384,
+  "chat_template_kwargs": {},
+  "system_suffix": "",
+  "system_merged_into_user": false,
+  "retry": true,
+  "db_path": null,
+  "limit": null,
+  "n_items": 113,
+  "completed": 113,
+  "resumed": 0,
+  "time_budget_s": null,
+  "stopped_reason": null,
+  "load_s": 247.2,
+  "total_s": 2958.8,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.21.0",
+    "peft": "0.21.2",
+    "accelerate": "1.15.0"
+  },
+  "summary": {
+    "n": 113,
+    "errors": 0,
+    "empty_sql": 0,
+    "p50_latency_ms": 18015,
+    "mean_input_tokens": 966.1150442477876,
+    "retried": 18,
+    "first_blocked": 1,
+    "first_exec_error": 17,
+    "retry_generation_errors": 0
+  },
+  "skipped": false,
+  "gpus_requested": 1,
+  "model_source": "official",
+  "requested_model_id": "Qwen/Qwen2.5-Coder-14B-Instruct",
+  "requested_revision": "aedcc2d42b622764e023cf882b6652e646b95671",
+  "time_budget_h": null,
+  "single_shot_system": "base-qwen2.5-coder-14b-instruct",
+  "repo_ref": "main",
+  "repo_commit": "83adebbce5f1ce2ea5be953c27db3f3659af773c",
+  "part": "all",
+  "session_order": 4,
+  "gpu_names": [
+    "Tesla T4",
+    "Tesla T4"
+  ]
+}
