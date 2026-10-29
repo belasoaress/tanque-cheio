@@ -126,6 +126,29 @@ UF_NAMES: dict[str, tuple[str, str]] = {
     "TO": ("Tocantins", "o"),
 }
 
+# Gentílicos (v2, M15): "municípios paulistas", "cidades gaúchas". (masculino, feminino)
+# no plural. O DF fica de fora (ninguém diz "cidades brasilienses" para o DF).
+UF_GENTILICOS: dict[str, tuple[str, str]] = {
+    "AC": ("acreanos", "acreanas"), "AL": ("alagoanos", "alagoanas"),
+    "AP": ("amapaenses", "amapaenses"), "AM": ("amazonenses", "amazonenses"),
+    "BA": ("baianos", "baianas"), "CE": ("cearenses", "cearenses"),
+    "ES": ("capixabas", "capixabas"), "GO": ("goianos", "goianas"),
+    "MA": ("maranhenses", "maranhenses"), "MT": ("mato-grossenses", "mato-grossenses"),
+    "MS": ("sul-mato-grossenses", "sul-mato-grossenses"), "MG": ("mineiros", "mineiras"),
+    "PA": ("paraenses", "paraenses"), "PB": ("paraibanos", "paraibanas"),
+    "PR": ("paranaenses", "paranaenses"), "PE": ("pernambucanos", "pernambucanas"),
+    "PI": ("piauienses", "piauienses"), "RJ": ("fluminenses", "fluminenses"),
+    "RN": ("potiguares", "potiguares"), "RS": ("gaúchos", "gaúchas"),
+    "RO": ("rondonienses", "rondonienses"), "RR": ("roraimenses", "roraimenses"),
+    "SC": ("catarinenses", "catarinenses"), "SP": ("paulistas", "paulistas"),
+    "SE": ("sergipanos", "sergipanas"), "TO": ("tocantinenses", "tocantinenses"),
+}  # fmt: skip
+REGION_GENTILICOS: dict[str, tuple[str, str]] = {
+    "N": ("nortistas", "nortistas"),
+    "NE": ("nordestinos", "nordestinas"),
+    "S": ("sulistas", "sulistas"),
+}
+
 REGION_TEXT: dict[str, tuple[tuple[str, str], ...]] = {
     "N": (("Norte", "o"), ("região Norte", "a")),
     "NE": (("Nordeste", "o"), ("região Nordeste", "a")),
@@ -864,6 +887,15 @@ class Ctx:
     def band_name(self, b: str) -> str:
         return "bandeira branca" if b == "BRANCA" else BAND_NAMES[b]
 
+    def city_nouns(self, loc: Loc, p_gentilico: float = 0.35) -> tuple[str, str]:
+        """("cidades X", "municípios X") de uma UF/região: "do Paraná" ou gentílico (v2)."""
+        table = UF_GENTILICOS if loc.kind == "uf" else REGION_GENTILICOS
+        key = loc.uf if loc.kind == "uf" else loc.regiao
+        if key in table and self.chance(p_gentilico):
+            masc, fem = table[key]
+            return f"cidades {fem}", f"municípios {masc}"
+        return f"cidades {loc.de}", f"municípios {loc.de}"
+
     def branca_clause(self) -> tuple[str, str]:
         """(predicado, texto) explicitando se a bandeira branca conta como bandeira."""
         if self.chance(0.5):
@@ -1298,6 +1330,8 @@ def g_ranking_municipios(t: Ctx) -> Cand:
         + f" GROUP BY {group}"
     )
     sql, probe = ranked(base, "preco_medio", desc, n, vi)
+    # v2: gentílico ("municípios paulistas") nas perguntas de uma UF ou região.
+    cid, mun = t.city_nouns(loc) if kind != "brasil" else (f"cidades {sc}", f"municípios {sc}")
     if n == 1:
         opts = [
             f"Qual a cidade {sc} com {P.o} mais {adj} {p}?",
@@ -1306,10 +1340,11 @@ def g_ranking_municipios(t: Ctx) -> Cand:
         ]
     else:
         opts = [
-            f"Quais as {n} cidades {sc} com {P.o} mais {adj} {p}?",
-            (f"top {n} municípios {sc} com {P.o} mais {adj} {p}", t.chance(0.5)),
-            f"Liste os {n} municípios {sc} onde {P.o} foi mais {adj} em média {p}.",
-            (f"me fala as {n} cidades {sc} com {P.o} mais {adj} {p}", False),
+            f"Quais as {n} {cid} com {P.o} mais {adj} {p}?",
+            (f"top {n} {mun} com {P.o} mais {adj} {p}", t.chance(0.5)),
+            f"Liste os {n} {mun} onde {P.o} foi mais {adj} em média {p}.",
+            (f"me fala as {n} {cid} com {P.o} mais {adj} {p}", False),
+            f"Quais os {n} {mun} com {P.o} mais {adj} {p}?",
         ]
     return Cand(_choose(t, opts), sql, True, _tags(P.tag, "ranking", "municipio", per.tag), probe)
 
@@ -1448,19 +1483,24 @@ def g_ranking_capitais(t: Ctx) -> Cand:
     adj = P.adj(desc)
     preds: tuple[str, ...] = ("m.capital",)
     sc, total = "", 27
+    # v2 (M15): capitais de uma região saem só com `nome`, como no gold do dev2 (4 de 4
+    # itens); as capitais do país inteiro continuam com `nome, uf`.
+    cols = "m.nome, m.uf"
     if t.chance(0.35):
         r = t.regiao()
         preds, sc, total = ("m.capital", *r.preds), r.de, len(t.cat.region_ufs[r.regiao])
+        cols = "m.nome"
+    vi = 2 if "," in cols else 1
     p = per.text(t.rng)
     base = (
-        "SELECT m.nome, m.uf, AVG(c.valor_venda) AS preco_medio "
+        f"SELECT {cols}, AVG(c.valor_venda) AS preco_medio "
         + frm(need_m=True)
         + where(P.pred, *preds, per.pred())
-        + " GROUP BY m.nome, m.uf"
+        + f" GROUP BY {cols}"
     )
     mode = t.pick(("n", "n", "n", "um", "todas"))
     if mode == "todas":
-        sql, probe = ranked(base, "preco_medio", desc, None, 2)
+        sql, probe = ranked(base, "preco_medio", desc, None, vi)
         a, b = ("mais cara", "mais barata") if desc else ("mais barata", "mais cara")
         opts = [
             f"Liste as capitais {sc}, da {a} para a {b}, pelo preço médio {P.do} {p}.",
@@ -1468,15 +1508,18 @@ def g_ranking_capitais(t: Ctx) -> Cand:
             (f"capitais {sc} da {a} pra {b} no preço {P.do} {p}", False),
         ]
     elif mode == "um":
-        sql, probe = ranked(base, "preco_medio", desc, 1, 2)
+        sql, probe = ranked(base, "preco_medio", desc, 1, vi)
         opts = [
             f"Qual a capital {sc} com {P.o} mais {adj} {p}?",
             f"Em qual capital {sc} {P.o} foi mais {adj} {p}?",
             (f"qual capital {sc} teve {P.o} mais {adj} {p}?", False),
+            # v2: a entidade fica implícita ("qual a gasolina mais barata entre as capitais")
+            f"Qual {P.o} mais {adj} em média entre as capitais {sc} {p}?",
+            f"Onde estava {P.o} mais {adj} entre as capitais {sc} {p}?",
         ]
     else:
         n = t.n((3, 5, 5, 10, 2), limit=total)
-        sql, probe = ranked(base, "preco_medio", desc, n, 2)
+        sql, probe = ranked(base, "preco_medio", desc, n, vi)
         opts = [
             f"Quais as {n} capitais {sc} com {P.o} mais {adj} {p}?",
             (f"top {n} capitais {sc} com {P.o} mais {adj} {p}", t.chance(0.5)),
@@ -1587,13 +1630,15 @@ def g_municipios_acima_limite(t: Ctx) -> Cand:
     rel = "acima de" if above else "abaixo de"
     having = f" HAVING AVG(c.valor_venda) {op} {thr}"
     R, sc, p = money(thr), loc.de, per.text(t.rng)
+    # v2: gentílico ("municípios gaúchos") nas perguntas de lista.
+    cid, mun = t.city_nouns(loc) if kind != "brasil" else (f"cidades {sc}", f"municípios {sc}")
     if t.chance(0.65):
         sql = f"SELECT {cols} {body}{having}"
         opts = [
-            f"Em quais cidades {sc} {P.o} ficou {rel} {R} em média {p}?",
-            f"Quais municípios {sc} tiveram preço médio {P.do} {rel} {R} {p}?",
-            (f"cidades {sc} com {P.o} {rel} {R} na média {p}", True),
-            (f"em quais cidades {sc} a média {P.do} ficou {rel} {R} {p}?", False),
+            f"Em quais {cid} {P.o} ficou {rel} {R} em média {p}?",
+            f"Quais {mun} tiveram preço médio {P.do} {rel} {R} {p}?",
+            (f"{cid} com {P.o} {rel} {R} na média {p}", True),
+            (f"em quais {cid} a média {P.do} ficou {rel} {R} {p}?", False),
         ]
         return Cand(_choose(t, opts), sql, False, _tags(P.tag, "municipio", per.tag, "limite"))
     sql = f"SELECT COUNT(*) AS municipios FROM (SELECT {cols} {body}{having}) t"
@@ -1847,15 +1892,16 @@ def g_lado_a_lado_produtos(t: Ctx) -> Cand:
         ]
     elif kind == "capitais":
         preds: tuple[str, ...] = ("m.capital",)
-        sc = ""
+        sc, ent = "", "m.nome, m.uf"
         if t.chance(0.5):
             r = t.regiao()
-            preds, sc = ("m.capital", *r.preds), r.de
+            # v2: capitais de uma região só com `nome` (gold do dev2)
+            preds, sc, ent = ("m.capital", *r.preds), r.de, "m.nome"
         sql = (
-            f"SELECT m.nome, m.uf, {cols} "
+            f"SELECT {ent}, {cols} "
             + frm(need_m=True)
             + where(prods, *preds, per.pred())
-            + " GROUP BY m.nome, m.uf"
+            + f" GROUP BY {ent}"
         )
         opts = [
             f"Compare o preço médio {A.do} e {B.do} em cada capital {sc} {p}.",
@@ -1865,14 +1911,29 @@ def g_lado_a_lado_produtos(t: Ctx) -> Cand:
         ]
     else:
         loc = t.loc({"brasil": 2, "uf": 3, "municipio": 3, "regiao": 2})
-        sql = f"SELECT {cols} " + frm(need_m=loc.needs_m) + where(prods, *loc.preds, per.pred())
+        # v2 (M15): "o preço médio de A e de B" num só lugar = uma linha por produto
+        # (entidade + valor), como no gold do dev2; não duas colunas.
+        sql = (
+            "SELECT c.produto, AVG(c.valor_venda) AS preco_medio "
+            + frm(need_m=loc.needs_m)
+            + where(prods, *loc.preds, per.pred())
+            + " GROUP BY c.produto"
+        )
         w = loc.em
         opts = [
             f"Qual o preço médio {A.do} e {B.do} {w} {p}?",
             f"Compare o preço médio {A.do} com o {B.do} {w} {p}.",
             (f"preço médio {A.do} e {B.do} {w} {p}", True),
             (f"qto custou em média {A.o} e {B.o} {w} {p}?", False),
+            f"Qual foi o preço médio {A.do} e {_de_art(B.o)} {w} {p}?",
         ]
+        return Cand(
+            _choose(t, opts),
+            sql,
+            False,
+            tags,
+            check=lambda rows: None if len(rows) == 2 else "poucas_linhas",
+        )
     return Cand(_choose(t, opts), sql, False, tags)
 
 
@@ -2602,6 +2663,1181 @@ def g_janela_ranking_por_grupo(t: Ctx) -> Cand:
     return Cand(_choose(t, opts), sql, False, tags + ["cte"], probe)
 
 
+# =============================================================================
+# Geradores v2 (M15, D34): padrões que o ft-v1 errou no dev2
+# =============================================================================
+
+
+def _int_threshold(t: Ctx, values: list[int]) -> int:
+    """Limiar inteiro redondo para contagens (mesma regra de `_pick_threshold`)."""
+    vals = sorted(set(values))
+    if len(vals) < 3:
+        raise Skip("sem_parametro")
+    present = set(values)
+    for _ in range(20):
+        i = t.rng.randrange(1, len(vals))
+        x = (vals[i - 1] + vals[i]) / 2
+        step = 5 if x < 60 else 10 if x < 300 else 50 if x < 3000 else 500
+        thr = int(round(x / step) * step)
+        if thr <= 0 or thr in present:
+            continue
+        above = sum(1 for v in values if v > thr)
+        if 1 <= above <= len(values) - 1 and min(above, len(values) - above) <= 40:
+            return thr
+    raise Skip("sem_parametro")
+
+
+def _two_periods(t: Ctx) -> tuple[Period, Period, str, str]:
+    """Dois períodos comparáveis (o mesmo recorte em 2025 e 2026) e os textos de cada um."""
+    kind = t.pick(("anos", "meses", "meses", "intervalo", "intervalo", "semestres", "trimestres"))
+    if kind == "anos":
+        return year_period(2025), year_period(2026), "em 2025", "em 2026"
+    if kind == "meses":
+        m = t.rng.randint(1, 9)
+        name = MONTHS_PT[m - 1]
+        return (month_period(2025, m), month_period(2026, m), f"em {name} de 2025",
+                f"em {name} de 2026")  # fmt: skip
+    if kind == "intervalo":
+        first = t.rng.randint(1, 8)
+        last = t.rng.randint(first + 1, min(9, first + 5))
+        a, b = MONTHS_PT[first - 1], MONTHS_PT[last - 1]
+        return (month_range_period(2025, first, last), month_range_period(2026, first, last),
+                f"entre {a} e {b} de 2025", f"entre {a} e {b} de 2026")  # fmt: skip
+    if kind == "semestres":
+        return (semester_period(2025, 1), semester_period(2026, 1),
+                "no primeiro semestre de 2025", "no primeiro semestre de 2026")  # fmt: skip
+    q = t.rng.randint(1, 3)
+    w = ORDINAL_QUARTER[q][0]
+    return (quarter_period(2025, q), quarter_period(2026, q), f"no {w} trimestre de 2025",
+            f"no {w} trimestre de 2026")  # fmt: skip
+
+
+def _bands_list(t: Ctx, k: int) -> list[str]:
+    pool = [b for b in BIG_BANDS if b in t.cat.bandeiras] + ["BRANCA"]
+    if len(pool) < k:
+        raise Skip("sem_parametro")
+    return t.rng.sample(pool, k)
+
+
+def _bands_text(t: Ctx, bands: Sequence[str]) -> str:
+    branca = t.pick(["branca", "bandeira branca", "postos sem bandeira"])
+    return _join_names([branca if b == "BRANCA" else BAND_NAMES[b] for b in bands])
+
+
+def _capitals_scope(t: Ctx) -> tuple[str, tuple[str, ...], str]:
+    """(colunas, filtros, texto): todas as capitais (nome, uf) ou as de uma região (nome)."""
+    if t.chance(0.5):
+        return "m.nome, m.uf", ("m.capital",), ""
+    r = t.regiao()
+    return "m.nome", ("m.capital", *r.preds), r.de
+
+
+def _uf_with_cities(t: Ctx, k: int = 4) -> Loc:
+    return t.uf(t.pick([u for u in t.cat.ufs if len(t.cat.by_uf[u]) >= k]))
+
+
+def g_postos_bairro(t: Ctx) -> Cand:
+    pool = [
+        m for m in t.cat.municipios if m.postos >= 20 and t.cat.bairros.get((m.nome, m.uf), 0) >= 5
+    ]
+    city = t.municipio_loc(t.pick(pool))
+    rows = t.query(
+        f"SELECT p.bairro FROM postos p {J_M}"
+        + where(*city.preds, "p.bairro IS NOT NULL")
+        + " GROUP BY p.bairro HAVING COUNT(*) >= 2 ORDER BY p.bairro"
+    )
+    bairros = [
+        b
+        for (b,) in rows
+        if re.fullmatch(r"[A-Z][A-Z ]{2,28}", b) and not re.search(r"\b[IVX]+\b", b)
+    ]
+    bairro = t.pick(bairros)
+    bd = city_display(bairro)
+    bpred = f"p.bairro = {sql_str(bairro)}"
+    tags = _tags("bairro", "municipio")
+    if t.chance(0.6):
+        sql = f"SELECT COUNT(*) AS postos FROM postos p {J_M}" + where(bpred, *city.preds)
+        opts = [
+            f"Quantos postos existem no bairro {bd}, {city.em}?",
+            f"Quantos postos há no bairro {bd} {city.de}?",
+            (f"número de postos no bairro {bd}, {city.em}", True),
+            (f"qtos postos tem no bairro {bd} {city.de}?", False),
+            f"Quantos postos de combustível o bairro {bd} {city.de} tem na pesquisa?",
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["contagem"])
+    P = t.prod(("GASOLINA", "ETANOL", "DIESEL S10", "GASOLINA ADITIVADA", "DIESEL"))
+    per = t.period({"none": 4, "last_month": 2, "year": 3, "semester": 1})
+    p = per.text(t.rng)
+    sql = (
+        "SELECT AVG(c.valor_venda) AS preco_medio "
+        + frm(need_m=True)
+        + where(P.pred, bpred, *city.preds, per.pred())
+    )
+    opts = [
+        f"Qual o preço médio {P.do} no bairro {bd}, {city.em}, {p}?",
+        f"Quanto custou, em média, {P.o} no bairro {bd} {city.de} {p}?",
+        (f"preço médio {P.do} no bairro {bd} {city.de} {p}", True),
+        (f"qto saiu {P.o} em média no {bd}, {city.em}, {p}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + [P.tag, per.tag])
+
+
+def g_filtro_contagem(t: Ctx) -> Cand:
+    kind = t.pick(("bandeiras", "bandeiras", "municipios", "municipios", "ufs", "coletas"))
+    more = t.chance(0.75)
+    op, rel = (">", "mais de") if more else ("<", "menos de")
+    tags = _tags("contagem", "limite")
+    if kind == "bandeiras":
+        loc = t.loc({"brasil": 3, "regiao": 2, "uf": 3})
+        if loc.kind == "brasil":
+            loc = t.brasil(allow_empty=False)
+        branca_pred, branca_txt = ("", "") if t.chance(0.4) else t.branca_clause()
+        join = f" {J_M}" if loc.needs_m else ""
+        body = f"FROM postos p{join}" + where(*loc.preds, branca_pred) + " GROUP BY p.bandeira"
+        thr = _int_threshold(t, [int(v) for (v,) in t.query(f"SELECT COUNT(*) {body}")])
+        sql = f"SELECT p.bandeira, COUNT(*) AS postos {body} HAVING COUNT(*) {op} {thr}"
+        w = loc.em
+        opts = [
+            f"Quais bandeiras têm {rel} {thr} postos {w}{branca_txt}?",
+            f"Quais bandeiras contam com {rel} {thr} postos {w}{branca_txt}?",
+            (f"bandeiras com {rel} {thr} postos {w}{branca_txt}", True),
+            (f"quais bandeiras tem {rel} {thr} postos {w}{branca_txt}?", False),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["bandeira", loc.tag])
+    if kind == "municipios":
+        scope = t.pick(("uf", "uf", "uf", "regiao", "brasil"))
+        if scope == "uf":
+            loc = _uf_with_cities(t, 5)
+            cols = "m.nome"
+            cid, mun = t.city_nouns(loc, 0.5)
+        elif scope == "regiao":
+            loc = t.regiao()
+            cols = "m.nome, m.uf"
+            cid, mun = t.city_nouns(loc, 0.5)
+        else:
+            loc = t.brasil(allow_empty=False)
+            cols = "m.nome, m.uf"
+            cid, mun = f"cidades {loc.em}", f"municípios {loc.em}"
+        body = f"FROM postos p {J_M}" + where(*loc.preds) + f" GROUP BY {cols}"
+        thr = _int_threshold(t, [int(v) for (v,) in t.query(f"SELECT COUNT(*) {body}")])
+        sql = f"SELECT {cols}, COUNT(*) AS postos {body} HAVING COUNT(*) {op} {thr}"
+        opts = [
+            f"Quais {mun} têm {rel} {thr} postos pesquisados?",
+            f"Em quais {cid} há {rel} {thr} postos?",
+            (f"{cid} com {rel} {thr} postos", True),
+            (f"quais {cid} tem {rel} {thr} postos na pesquisa?", False),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["municipio", loc.tag])
+    if kind == "ufs":
+        b = t.bandeira(branca=0.2) if t.chance(0.5) else None
+        loc = t.regiao() if t.chance(0.35) else t.brasil(allow_empty=False)
+        bpred = f"p.bandeira = {sql_str(b)}" if b else ""
+        noun = t.band_postos(b) if b else "postos"
+        body = f"FROM postos p {J_M}" + where(bpred, *loc.preds) + " GROUP BY m.uf"
+        thr = _int_threshold(t, [int(v) for (v,) in t.query(f"SELECT COUNT(*) {body}")])
+        sql = f"SELECT m.uf, COUNT(*) AS postos {body} HAVING COUNT(*) {op} {thr}"
+        sc = loc.de if loc.kind == "regiao" else ""
+        opts = [
+            f"Quais estados {sc} têm {rel} {thr} {noun}?",
+            f"Em quais UFs {sc} há {rel} {thr} {noun}?",
+            (f"estados {sc} com {rel} {thr} {noun}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["uf", "postos"])
+    P, per = t.prod(), t.period()
+    p = per.text(t.rng)
+    if t.chance(0.5):
+        loc = t.regiao() if t.chance(0.4) else t.brasil(allow_empty=False)
+        cols, ents = "m.uf", "estados " + (loc.de if loc.kind == "regiao" else "")
+    else:
+        loc = _uf_with_cities(t, 5)
+        cols = "m.nome"
+        ents = t.city_nouns(loc, 0.4)[0]
+    body = frm(need_m=True) + where(P.pred, *loc.preds, per.pred()) + f" GROUP BY {cols}"
+    thr = _int_threshold(t, [int(v) for (v,) in t.query(f"SELECT COUNT(*) {body}")])
+    sql = f"SELECT {cols}, COUNT(*) AS coletas {body} HAVING COUNT(*) {op} {thr}"
+    opts = [
+        f"Quais {ents} tiveram {rel} {thr} coletas de {P.text} {p}?",
+        f"Em quais {ents} houve {rel} {thr} coletas de preço {P.do} {p}?",
+        (f"{ents} com {rel} {thr} coletas de {P.text} {p}", True),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + [P.tag, per.tag, "coletas"])
+
+
+def g_serie_trimestral(t: Ctx) -> Cand:
+    P = t.prod() if t.chance(0.85) else None
+    loc = t.loc({"brasil": 4, "uf": 3, "regiao": 2, "big_city": 2})
+    w = loc.em
+    by_quarter = t.chance(0.7)
+    if by_quarter:
+        per = year_period(t.pick((2025, 2025, 2026)))
+        grp, alias = "quarter(c.data_coleta)", "trimestre"
+    else:
+        per, grp, alias = whole_period(), "year(c.data_coleta)", "ano"
+    p = per.text(t.rng) if by_quarter else ""
+    count = P is None or t.chance(0.2)
+    metric = "COUNT(*) AS coletas" if count else "AVG(c.valor_venda) AS preco_medio"
+    sql = (
+        f"SELECT {grp} AS {alias}, {metric} "
+        + frm(need_m=loc.needs_m)
+        + where(P.pred if P else "", *loc.preds, per.pred())
+        + f" GROUP BY {alias} ORDER BY {alias}"
+    )
+    tags = _tags(P.tag if P else "", loc.tag, per.tag, "serie", alias)
+    dep = f"de {P.text}" if P else ""
+    if count and by_quarter:
+        opts = [
+            f"Quantas coletas {dep} foram feitas por trimestre {p} {w}?",
+            (f"número de coletas {dep} por trimestre {w} {p}", True),
+            f"Quantos preços {dep} foram coletados em cada trimestre {p} {w}?",
+        ]
+    elif count:
+        opts = [
+            f"Quantas coletas {dep} houve em cada ano {w}?",
+            (f"número de coletas {dep} por ano {w}", True),
+            f"Quantos preços {dep} foram coletados ano a ano {w}?",
+        ]
+    elif by_quarter:
+        opts = [
+            f"Qual foi o preço médio {P.do} por trimestre {p} {w}?",
+            f"Qual o preço médio {P.do} em cada trimestre {p} {w}?",
+            (f"preço médio {P.do} por trimestre {w} {p}", True),
+            (f"qto custou {P.o} em média em cada trimestre {p} {w}?", False),
+        ]
+    else:
+        opts = [
+            f"Qual o preço médio {P.do} por ano {w}?",
+            f"Como ficou o preço médio {P.do} ano a ano {w}?",
+            (f"preço médio anual {P.do} {w}", True),
+            f"Qual foi o preço médio {P.do} em cada ano dos dados {w}?",
+        ]
+    return Cand(_choose(t, opts), sql, False, tags)
+
+
+def g_postos_condicao_preco(t: Ctx) -> Cand:
+    P = t.prod()
+    loc = t.loc({"uf": 4, "big_city": 3, "regiao": 2, "brasil": 1})
+    if loc.kind == "brasil":
+        loc = t.brasil(allow_empty=False)
+    per = t.period({"last_month": 5, "month": 3, "year": 2, "none": 1})
+    body = frm(need_m=loc.needs_m) + where(P.pred, *loc.preds, per.pred())
+    q = t.query(
+        "SELECT quantile_cont(c.valor_venda, 0.15), quantile_cont(c.valor_venda, 0.5), "
+        f"quantile_cont(c.valor_venda, 0.85) {body}"
+    )
+    if not q or q[0][0] is None:
+        raise Skip("sem_parametro")
+    thr = round(float(t.pick(q[0])) * 10) / 10
+    above = t.chance(0.65)
+    op, rel = (">", "acima de") if above else ("<", "abaixo de")
+    R, w, p = money(thr), loc.em, per.text(t.rng)
+    cond = f"c.valor_venda {op} {thr}"
+    tags = _tags(P.tag, loc.tag, per.tag, "limite", "contagem")
+    if loc.kind != "municipio" and t.chance(0.25):
+        sql = (
+            "SELECT COUNT(DISTINCT m.municipio_id) AS municipios "
+            + frm(need_m=True)
+            + where(P.pred, *loc.preds, cond, per.pred())
+        )
+        opts = [
+            f"Em quantas cidades {w} houve coleta de {P.text} {rel} {R} {p}?",
+            f"Quantos municípios {w} tiveram {P.text} vendido {rel} {R} {p}?",
+            (f"número de cidades {w} com {P.text} {rel} {R} {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["municipio"])
+    sql = (
+        "SELECT COUNT(DISTINCT c.posto_id) AS postos "
+        + frm(need_m=loc.needs_m)
+        + where(P.pred, *loc.preds, cond, per.pred())
+    )
+    opts = [
+        f"Quantos postos {w} venderam {P.text} {rel} {R} {p}?",
+        f"Quantos postos com {P.text} {rel} {R} houve {w} {p}?",
+        f"Em quantos postos {w} {P.o} foi coletado {rel} {R} {p}?",
+        (f"qtos postos {w} tiveram {P.text} {rel} {R} {p}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + ["posto"])
+
+
+def g_tanto_quanto(t: Ctx) -> Cand:
+    kind = t.pick(("postos_periodos", "postos_periodos", "postos_produtos", "cidades", "bandeiras"))
+    tags = _tags("intersecao")
+    if kind == "bandeiras":
+        u1, u2 = t.rng.sample(t.cat.ufs, 2)
+        L1, L2 = t.uf(u1), t.uf(u2)
+        branca_pred, branca_txt = t.branca_clause()
+
+        def part(loc: Loc) -> str:
+            return f"SELECT p.bandeira FROM postos p {J_M}" + where(*loc.preds, branca_pred)
+
+        inter = f"{part(L1)} INTERSECT {part(L2)}"
+        if t.chance(0.35):
+            sql = f"SELECT COUNT(*) AS bandeiras FROM ({inter}) t"
+            opts = [
+                f"Quantas bandeiras têm postos tanto {L1.em} quanto {L2.em}{branca_txt}?",
+                (f"número de bandeiras presentes {L1.em} e também {L2.em}{branca_txt}", True),
+            ]
+            return Cand(_choose(t, opts), sql, False, tags + ["bandeira", "contagem"])
+        opts = [
+            f"Quais bandeiras têm postos tanto {L1.em} quanto {L2.em}{branca_txt}?",
+            f"Que bandeiras aparecem {L1.em} e também {L2.em}{branca_txt}?",
+            (f"bandeiras presentes tanto {L1.em} quanto {L2.em}{branca_txt}", True),
+        ]
+        return Cand(_choose(t, opts), inter, False, tags + ["bandeira"])
+    if kind == "cidades":
+        P = t.prod(("GNV", "GASOLINA ADITIVADA", "DIESEL", "DIESEL S10", "ETANOL"))
+        loc = _uf_with_cities(t, 4)
+        pa, pb, ta, tb = _two_periods(t)
+
+        def part_c(per: Period) -> str:
+            return "SELECT m.nome " + frm(need_m=True) + where(P.pred, *loc.preds, per.pred())
+
+        inter = f"{part_c(pa)} INTERSECT {part_c(pb)}"
+        cid, mun = t.city_nouns(loc, 0.3)
+        if t.chance(0.4):
+            sql = f"SELECT COUNT(*) AS municipios FROM ({inter}) t"
+            opts = [
+                f"Em quantas {cid} houve coleta de {P.text} tanto {ta} quanto {tb}?",
+                (f"número de {mun} com coleta de {P.text} {ta} e também {tb}", True),
+            ]
+            return Cand(_choose(t, opts), sql, False, tags + [P.tag, "municipio", "contagem"])
+        opts = [
+            f"Quais {mun} tiveram coleta de {P.text} tanto {ta} quanto {tb}?",
+            f"Em quais {cid} houve coleta de {P.text} {ta} e também {tb}?",
+            (f"{cid} com coleta de {P.text} tanto {ta} quanto {tb}", True),
+        ]
+        return Cand(_choose(t, opts), inter, False, tags + [P.tag, "municipio"])
+    loc = t.loc({"big_city": 4, "capital": 2, "uf": 2})
+    w = loc.em
+    if kind == "postos_periodos":
+        P = t.prod()
+        pa, pb, ta, tb = _two_periods(t)
+
+        def part_p(per: Period) -> str:
+            return (
+                "SELECT c.posto_id "
+                + frm(need_m=loc.needs_m)
+                + where(P.pred, *loc.preds, per.pred())
+            )
+
+        sql = f"SELECT COUNT(*) AS postos FROM ({part_p(pa)} INTERSECT {part_p(pb)}) t"
+        opts = [
+            f"Quantos postos {w} tiveram coleta de {P.text} tanto {ta} quanto {tb}?",
+            f"Quantos postos {w} tiveram {P.text} pesquisado {ta} e também {tb}?",
+            (f"número de postos {w} com coleta de {P.text} {ta} e {tb}", True),
+            (f"qtos postos {w} tiveram coleta de {P.text} nos dois períodos, {ta} e {tb}?", False),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + [P.tag, loc.tag, "posto", "periodo"])
+    a, b = t.pick(
+        (("GNV", "ETANOL"), ("GASOLINA ADITIVADA", "ETANOL"), ("DIESEL", "DIESEL S10"),
+         ("GNV", "DIESEL S10"), ("GASOLINA", "GNV"), ("DIESEL", "GASOLINA ADITIVADA"))
+    )  # fmt: skip
+    A, B = t.prod_text(a), t.prod_text(b)
+    per = t.period({"last_month": 4, "month": 2, "year": 2, "none": 1})
+    p = per.text(t.rng)
+
+    def part_x(code: str) -> str:
+        return (
+            "SELECT c.posto_id "
+            + frm(need_m=loc.needs_m)
+            + where(f"c.produto = {sql_str(code)}", *loc.preds, per.pred())
+        )
+
+    sql = f"SELECT COUNT(*) AS postos FROM ({part_x(a)} INTERSECT {part_x(b)}) t"
+    opts = [
+        f"Quantos postos {w} venderam tanto {A.text} quanto {B.text} {p}?",
+        f"Em quantos postos {w} houve coleta de {A.text} e também de {B.text} {p}?",
+        (f"número de postos {w} com {A.text} e {B.text} {p}", True),
+        (f"qtos postos {w} tinham {A.text} e {B.text} ao mesmo tempo {p}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + [A.tag, B.tag, loc.tag, "posto"])
+
+
+def g_todos_os(t: Ctx) -> Cand:
+    kind = t.pick(("regra70", "regra70", "limite_meses", "limite_meses", "limite_municipios"))
+    tags = _tags("todos", "cte")
+    if kind in ("regra70", "limite_municipios"):
+        per = t.period()
+        p = per.text(t.rng)
+        if t.chance(0.25):
+            group, member, ents, membs = "regiao", "uf", "regiões", "estados"
+            scope: tuple[str, ...] = ()
+            sc = ""
+        else:
+            group, member, ents, membs = "uf", "nome", "estados", "municípios"
+            scope, sc = (), ""
+            if t.chance(0.35):
+                r = t.regiao()
+                scope, sc = r.preds, r.de
+        if kind == "regra70":
+            cte = (
+                f"WITH r AS (SELECT m.{group}, m.{member}, {RATIO} AS razao "
+                + frm(need_m=True) + where(E_G, *scope, per.pred())
+                + f" GROUP BY m.{group}, m.{member})"
+            )  # fmt: skip
+            nenhum = t.chance(0.3)
+            cond = "razao > 0.7" if nenhum else "razao <= 0.7"
+            sql = f"{cte} SELECT {group} FROM r GROUP BY {group} HAVING bool_and({cond}) ORDER BY {group}"
+            if nenhum:
+                opts = [
+                    f"Em quais {ents} {sc} o etanol não compensou em nenhum dos {membs} {p}?",
+                    f"Em quais {ents} {sc} nenhum dos {membs} pesquisados teve o etanol compensando {p}?",
+                    (f"{ents} {sc} em que o etanol não compensou em nenhum dos {membs} {p}", True),
+                ]  # fmt: skip
+            else:
+                opts = [
+                    f"Em quais {ents} {sc} todos os {membs} pesquisados tiveram o etanol compensando {p}?",
+                    f"Em quais {ents} {sc} {t.pick(_COMPENSA)} em todos os {membs} {p}?",
+                    (f"{ents} {sc} onde o etanol compensou em todos os {membs} {p}", True),
+                    (f"em quais {ents} {sc} o etanol valeu a pena em todos os {membs} {p}?", False),
+                ]  # fmt: skip
+            return Cand(_choose(t, opts), sql, False, tags + ["regra70", per.tag])
+        P = t.prod()
+        cte = (
+            f"WITH r AS (SELECT m.{group}, m.{member}, AVG(c.valor_venda) AS preco "
+            + frm(need_m=True) + where(P.pred, *scope, per.pred())
+            + f" GROUP BY m.{group}, m.{member})"
+        )  # fmt: skip
+        above = t.chance(0.6)
+        agg = "MIN" if above else "MAX"
+        vals = [float(v) for (v,) in t.query(f"{cte} SELECT {agg}(preco) FROM r GROUP BY {group}")]
+        thr = _pick_threshold(t, vals)
+        op, rel = (">", "acima de") if above else ("<", "abaixo de")
+        sql = (
+            f"{cte} SELECT {group} FROM r GROUP BY {group} HAVING {agg}(preco) {op} {thr} "
+            f"ORDER BY {group}"
+        )
+        R = money(thr)
+        opts = [
+            f"Em quais {ents} {sc} todos os {membs} tiveram {P.o} {rel} {R} em média {p}?",
+            f"Quais {ents} {sc} tiveram preço médio {P.do} {rel} {R} em todos os {membs} {p}?",
+            (f"{ents} {sc} em que todos os {membs} ficaram com {P.o} {rel} {R} {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + [P.tag, per.tag, "limite"])
+    P = t.prod()
+    per = t.period({"year": 5, "semester": 3, "last12": 2, "range": 3, "quarter": 1}, min_months=3)
+    months, de = per.months(), per.de(t.rng)
+    scope_kind = t.pick(("capitais", "capitais", "ufs", "cidades"))
+    if scope_kind == "capitais":
+        cols, preds, sc = _capitals_scope(t)
+        ents = f"capitais {sc}"
+    elif scope_kind == "ufs":
+        cols, preds, ents = "m.uf", (), "estados"
+    else:
+        loc = _uf_with_cities(t, 4)
+        cols, preds = "m.nome", loc.preds
+        ents = t.city_nouns(loc, 0.3)[0]
+    sel = cols.replace("m.", "")
+    cte = (
+        f"WITH mensal AS (SELECT {cols}, date_trunc('month', c.data_coleta) AS mes, "
+        "AVG(c.valor_venda) AS preco " + frm(need_m=True) + where(P.pred, *preds, per.pred())
+        + f" GROUP BY {cols}, mes)"
+    )  # fmt: skip
+    above = t.chance(0.6)
+    agg = "MIN" if above else "MAX"
+    vals = [
+        float(v)
+        for (v,) in t.query(
+            f"{cte} SELECT {agg}(preco) FROM mensal GROUP BY {sel} HAVING COUNT(*) = {months}"
+        )
+    ]
+    thr = _pick_threshold(t, vals)
+    op, rel = (">", "acima de") if above else ("<", "abaixo de")
+    sql = (
+        f"{cte} SELECT {sel} FROM mensal GROUP BY {sel} "
+        f"HAVING COUNT(*) = {months} AND {agg}(preco) {op} {thr} ORDER BY {sel.split(',')[0]}"
+    )
+    R = money(thr)
+    opts = [
+        f"Em quais {ents} {P.o} ficou {rel} {R} em todos os meses {de}?",
+        f"Quais {ents} tiveram preço médio {P.do} {rel} {R} em todos os meses {de}?",
+        (f"{ents} com {P.o} {rel} {R} todo mês {de}", True),
+        (f"em quais {ents} {P.o} ficou {rel} {R} todo mês {de}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + [P.tag, per.tag, "mes", "limite"])
+
+
+def g_participacao_pct(t: Ctx) -> Cand:
+    kind = t.pick(
+        ("bandeira_grupo", "bandeira_grupo", "bandeira_local", "produto_local", "ranking")
+    )
+    tags = _tags("percentual")
+
+    def share(b: str) -> str:
+        return f"100.0 * COUNT(CASE WHEN p.bandeira = {sql_str(b)} THEN 1 END) / COUNT(*)"
+
+    def ser(b: str) -> str:
+        return "são de bandeira branca" if b == "BRANCA" else f"são da bandeira {BAND_NAMES[b]}"
+
+    if kind == "produto_local":
+        P, per = t.prod(), t.period()
+        loc = t.loc({"brasil": 2, "uf": 3, "regiao": 2, "big_city": 3})
+        w, p = loc.em, per.text(t.rng)
+        sql = (
+            f"SELECT 100.0 * COUNT(CASE WHEN c.produto = {sql_str(P.code)} THEN 1 END) / COUNT(*) "
+            "AS pct " + frm(need_m=loc.needs_m) + where(*loc.preds, per.pred())
+        )
+        opts = [
+            f"Que percentual das coletas {w} {p} foi de {P.text}?",
+            f"Qual a participação {P.do} no total de coletas de preço {w} {p}, em %?",
+            (f"% das coletas {w} {p} que foram de {P.text}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + [P.tag, loc.tag, per.tag, "coletas"])
+    b = t.bandeira(branca=0.5)
+    noun = t.band_postos(b)
+    if kind == "bandeira_local":
+        loc = t.loc({"brasil": 2, "uf": 3, "regiao": 2, "big_city": 3})
+        if loc.kind == "brasil":
+            loc = t.brasil(allow_empty=False)
+        join = f" {J_M}" if loc.needs_m else ""
+        sql = f"SELECT {share(b)} AS pct FROM postos p{join}" + where(*loc.preds)
+        w = loc.em
+        opts = [
+            f"Qual o percentual de {noun} {w}?",
+            f"Que porcentagem dos postos {w} {ser(b)}?",
+            (f"% de {noun} {w}", True),
+            f"Qual a participação dos {noun} no total de postos {w}, em %?",
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["bandeira", loc.tag])
+    if kind == "ranking":
+        desc = t.chance(0.7)
+        n = t.n((3, 5, 5))
+        base = f"SELECT m.uf, {share(b)} AS pct FROM postos p {J_M} GROUP BY m.uf"
+        sql, probe = ranked(base, "pct", desc, n, 1)
+        maior = "maior" if desc else "menor"
+        opts = [
+            f"Quais os {n} estados com {maior} percentual de {noun}?",
+            (f"top {n} UFs com {maior} % de {noun}", True),
+            f"Em quais {n} estados a participação dos {noun} no total de postos é {maior}?",
+        ]
+        return Cand(_choose(t, opts), sql, True, tags + ["bandeira", "uf", "ranking"], probe)
+    if t.chance(0.5):
+        g, preds, gname = "m.regiao", (), "região"
+    else:
+        r = t.regiao()
+        g, preds, gname = "m.uf", r.preds, f"estado {r.de}"
+    sql = f"SELECT {g}, {share(b)} AS pct FROM postos p {J_M}" + where(*preds) + f" GROUP BY {g}"
+    opts = [
+        f"Qual o percentual de {noun} em cada {gname}?",
+        f"Que porcentagem dos postos de cada {gname} {ser(b)}?",
+        (f"% de {noun} por {gname}", True),
+        f"Qual a participação dos {noun} no total de postos de cada {gname}?",
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + ["bandeira", g.split(".")[1]])
+
+
+def g_regiao_vs_estado(t: Ctx) -> Cand:
+    P, per = t.prod(), t.period()
+    p = per.text(t.rng)
+    kind = t.pick(("capital_resto", "capital_resto", "capital_dif", "uf_regiao", "uf_regiao_dif"))
+    tags = _tags(P.tag, per.tag, "comparacao")
+    cap = "AVG(CASE WHEN m.capital THEN c.valor_venda END)"
+    resto = "AVG(CASE WHEN NOT m.capital THEN c.valor_venda END)"
+    if kind == "capital_resto":
+        desc = t.chance(0.6)
+        scope: tuple[str, ...] = ()
+        sc = ""
+        if t.chance(0.4):
+            r = t.regiao()
+            scope, sc = r.preds, r.de
+        op = ">" if desc else "<"
+        adj = P.adj(desc)
+        sql = (
+            "SELECT m.uf " + frm(need_m=True) + where(P.pred, *scope, per.pred())
+            + f" GROUP BY m.uf HAVING {cap} {op} {resto} ORDER BY m.uf"
+        )  # fmt: skip
+        opts = [
+            f"Em quais estados {sc} {P.o} da capital foi mais {adj} que a média do resto do estado {p}?",
+            f"Em quais UFs {sc} {P.o} ficou mais {adj} na capital do que no interior {p}?",
+            (f"estados {sc} onde {P.o} da capital foi mais {adj} que no interior {p}", True),
+            (f"em quais estados {sc} a capital teve {P.o} mais {adj} que o resto do estado {p}?", False),
+        ]  # fmt: skip
+        return Cand(_choose(t, opts), sql, False, tags + ["capital", "uf"])
+    if kind == "capital_dif":
+        r = t.regiao(t.pick(("N", "NE", "SE", "S")))
+        sql = (
+            f"SELECT m.uf, {cap} - {resto} AS diferenca "
+            + frm(need_m=True) + where(P.pred, *r.preds, per.pred()) + " GROUP BY m.uf"
+        )  # fmt: skip
+        opts = [
+            f"Em cada estado {r.de}, qual a diferença entre o preço médio {P.do} na capital e no interior {p}?",
+            f"Quanto {P.o} da capital custou a mais que {P.art} do interior em cada estado {r.de} {p}?",
+            (f"diferença capital menos interior no preço médio {P.do}, por estado {r.de}, {p}", True),
+        ]  # fmt: skip
+        return Cand(_choose(t, opts), sql, False, tags + ["capital", "uf"])
+    if kind == "uf_regiao":
+        r = t.regiao()
+        above = t.chance(0.6)
+        op, rel = (">", "acima") if above else ("<", "abaixo")
+        body = frm(need_m=True) + where(P.pred, *r.preds, per.pred())
+        sql = (
+            f"WITH regional AS (SELECT AVG(c.valor_venda) AS media {body}) SELECT m.uf {body} "
+            f"GROUP BY m.uf HAVING AVG(c.valor_venda) {op} (SELECT media FROM regional) "
+            "ORDER BY m.uf"
+        )
+        opts = [
+            f"Em quais estados {r.de} {P.o} ficou {rel} da média da região {p}?",
+            f"Quais UFs {r.de} tiveram preço médio {P.do} {rel} da média regional {p}?",
+            (f"estados {r.de} com {P.o} {rel} da média da região {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["regiao", "uf", "cte"])
+    u = t.uf()
+    reg = u.regiao or ""
+    rname = REGION_TEXT[reg][0][0]
+    sql = (
+        "WITH e AS (SELECT AVG(c.valor_venda) AS p " + frm(need_m=True)
+        + where(P.pred, *u.preds, per.pred()) + "), r AS (SELECT AVG(c.valor_venda) AS p "
+        + frm(need_m=True) + where(P.pred, f"m.regiao = '{reg}'", per.pred())
+        + ") SELECT e.p - r.p AS diferenca FROM e CROSS JOIN r"
+    )  # fmt: skip
+    opts = [
+        f"Qual a diferença entre o preço médio {P.do} {u.em} e o da região {rname} {p}?",
+        f"Quanto {P.o} {u.de} custou a mais que a média da sua região ({rname}) {p}?",
+        (f"diferença entre {P.o} {u.de} e a média do {rname} {p}", True),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + ["regiao", "uf", "cte"])
+
+
+def g_media_da_serie(t: Ctx) -> Cand:
+    P = t.prod()
+    kind = t.pick(("meses_conta", "meses_conta", "meses_lista", "amplitude", "postos"))
+    tags = _tags(P.tag, "subconsulta", "cte")
+    if kind == "postos":
+        city = t.municipio(min_postos=25)
+        per = t.period({"last_month": 4, "month": 2, "year": 2, "none": 1})
+        p = per.text(t.rng)
+        body = frm(need_m=True) + where(P.pred, *city.preds, per.pred())
+        above = t.chance(0.4)
+        op, rel = (">", "acima") if above else ("<", "abaixo")
+        sql = (
+            f"WITH pp AS (SELECT c.posto_id, AVG(c.valor_venda) AS preco {body} "
+            f"GROUP BY c.posto_id) SELECT COUNT(*) AS postos FROM pp "
+            f"WHERE preco {op} (SELECT AVG(c.valor_venda) {body})"
+        )
+        opts = [
+            f"Quantos postos {city.de} venderam {P.text} {rel} da média da cidade {p}?",
+            f"Em quantos postos {city.de} o preço médio {P.do} ficou {rel} da média da cidade {p}?",
+            (f"número de postos {city.de} com {P.o} {rel} da média da cidade {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["posto", per.tag])
+    loc = t.loc({"brasil": 4, "uf": 3, "regiao": 2, "big_city": 2})
+    per = t.period({"year": 6, "semester": 2, "last12": 2, "range": 2}, min_months=4)
+    w, p, de = loc.em, per.text(t.rng), per.de(t.rng)
+    pword = {"year": "do ano", "semester": "do semestre"}.get(per.kind, "do período")
+    body = frm(need_m=loc.needs_m) + where(P.pred, *loc.preds, per.pred())
+    mensal = (
+        "WITH mensal AS (SELECT date_trunc('month', c.data_coleta) AS mes, "
+        f"AVG(c.valor_venda) AS preco {body} GROUP BY mes)"
+    )
+    tags += [loc.tag, per.tag, "serie"]
+    if kind == "amplitude":
+        sql = f"{mensal} SELECT MAX(preco) - MIN(preco) AS amplitude FROM mensal"
+        opts = [
+            f"Qual a amplitude (maior menos menor) do preço médio mensal {P.do} {w} {p}?",
+            f"Qual a diferença entre o mês mais caro e o mais barato {P.do} {w} {p}, pelo preço médio mensal?",
+            (f"diferença entre a maior e a menor média mensal {P.do} {w} {p}", True),
+        ]  # fmt: skip
+        return Cand(_choose(t, opts), sql, False, tags + ["amplitude"])
+    above = t.chance(0.6)
+    op, rel = (">", "acima") if above else ("<", "abaixo")
+    media = f"(SELECT AVG(c.valor_venda) {body})"
+    if kind == "meses_conta":
+        sql = f"{mensal} SELECT COUNT(*) AS meses FROM mensal WHERE preco {op} {media}"
+        opts = [
+            f"Quantos meses {de} tiveram preço médio {P.do} {w} {rel} da média {pword}?",
+            f"Em quantos meses {de} {P.o} ficou {rel} da sua média {pword} {w}?",
+            (f"número de meses {de} com {P.o} {rel} da média {pword} {w}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["contagem"])
+    sql = f"{mensal} SELECT mes FROM mensal WHERE preco {op} {media} ORDER BY mes"
+    opts = [
+        f"Em quais meses {de} o preço médio {P.do} {w} ficou {rel} da média {pword}?",
+        f"Quais meses {de} tiveram {P.o} {rel} da média {pword} {w}?",
+        (f"meses {de} com {P.o} {rel} da média {pword} {w}", True),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags)
+
+
+def g_nunca_coleta(t: Ctx) -> Cand:
+    P = t.prod(("GNV", "GNV", "DIESEL", "GASOLINA ADITIVADA", "DIESEL S10", "ETANOL"))
+    if t.chance(0.5):
+        per, p = whole_period(), ""
+    else:
+        per = t.period({"last_month": 3, "year": 3, "month": 2, "semester": 1})
+        p = per.text(t.rng)
+    nunca = "nunca tiveram coleta" if not p else "não tiveram nenhuma coleta"
+    tags = _tags(P.tag, per.tag, "subconsulta", "negacao")
+    kind = t.pick(("mun_lista", "mun_lista", "mun_conta", "postos"))
+    if kind == "postos":
+        loc = t.loc({"big_city": 4, "uf": 2, "capital": 2})
+        join = f" {J_M}" if loc.needs_m else ""
+        sub = "SELECT c.posto_id FROM coletas c" + where(P.pred, per.pred())
+        sql = f"SELECT COUNT(*) AS postos FROM postos p{join}" + where(
+            *loc.preds, f"p.posto_id NOT IN ({sub})"
+        )
+        w = loc.em
+        opts = [
+            f"Quantos postos {w} {nunca} de {P.text} {p}?",
+            f"Em quantos postos {w} não houve coleta de {P.text} {p}?",
+            (f"número de postos {w} sem coleta de {P.text} {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["posto", loc.tag])
+    sub = f"SELECT p.municipio_id FROM coletas c {J_P}" + where(P.pred, per.pred())
+    if t.chance(0.7):
+        loc = _uf_with_cities(t, 4)
+        cols = "m.nome"
+    else:
+        loc = t.regiao()
+        cols = "m.nome, m.uf"
+    cid, mun = t.city_nouns(loc, 0.3)
+    cond = f"m.municipio_id NOT IN ({sub})"
+    if kind == "mun_conta":
+        sql = "SELECT COUNT(*) AS municipios FROM municipios m" + where(*loc.preds, cond)
+        opts = [
+            f"Quantos {mun} {nunca} de {P.text} {p}?",
+            f"Em quantas {cid} não houve coleta de {P.text} {p}?",
+            (f"número de {cid} sem coleta de {P.text} {p}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["municipio", "contagem"])
+    sql = f"SELECT {cols} FROM municipios m" + where(*loc.preds, cond)
+    opts = [
+        f"Quais {mun} {nunca} de {P.text} {p}?",
+        f"Em quais {cid} não houve coleta de {P.text} {p}?",
+        (f"{cid} sem nenhuma coleta de {P.text} {p}", True),
+        (f"quais {cid} nunca tiveram {P.text} pesquisado {p}?" if not p else
+         f"quais {cid} ficaram sem coleta de {P.text} {p}?", False),
+    ]  # fmt: skip
+    return Cand(_choose(t, opts), sql, False, tags + ["municipio"])
+
+
+def g_variacao_grupos(t: Ctx) -> Cand:
+    if t.chance(0.6):
+        pa, pb, txt = _period_pairs(t)
+    else:
+        year = t.pick((2025, 2026))
+        i = t.rng.randint(1, (12 if year == 2025 else 9) - 1)
+        j = t.rng.randint(i + 1, 12 if year == 2025 else 9)
+        pa, pb = month_period(year, i), month_period(year, j)
+        a, b = MONTHS_PT[i - 1], MONTHS_PT[j - 1]
+        txt = t.pick([f"entre {a} e {b} de {year}, comparando a média de {b} com a de {a}",
+                      f"de {a} para {b} de {year}"])  # fmt: skip
+    scope = t.pick(("regiao", "regiao", "bandeira", "produto"))
+    P = t.prod() if scope != "produto" else None
+    preds: tuple[str, ...] = ()
+    bands: list[str] = []
+    if scope == "regiao":
+        g, need_p, need_m = "m.regiao", False, True
+    elif scope == "bandeira":
+        bands = _bands_list(t, t.pick((3, 4)))
+        preds = (f"p.bandeira IN ({', '.join(sql_str(b) for b in bands)})",)
+        g, need_p, need_m = "p.bandeira", True, False
+    else:
+        g, need_p, need_m = "c.produto", False, False
+    col = g.split(".")[1]
+
+    def part(per: Period) -> str:
+        return (
+            f"SELECT {g}, AVG(c.valor_venda) AS p "
+            + frm(need_p=need_p, need_m=need_m)
+            + where(P.pred if P else "", *preds, per.pred())
+            + f" GROUP BY {g}"
+        )
+
+    pct = t.chance(0.5)
+    alias = "variacao_pct" if pct else "variacao"
+    expr = "100 * (b.p - a.p) / a.p" if pct else "b.p - a.p"
+    unit = "percentual" if pct else "em reais"
+    base = (
+        f"WITH a AS ({part(pa)}), b AS ({part(pb)}) SELECT a.{col}, {expr} AS {alias} "
+        f"FROM a JOIN b ON a.{col} = b.{col}"
+    )
+    tags = _tags(P.tag if P else "", "variacao", "periodo", "cte", col)
+    names = _bands_text(t, bands) if bands else ""
+    if t.chance(0.6):
+        if scope == "regiao":
+            opts = [
+                f"Qual a variação {unit} do preço médio {P.do} em cada região {txt}?",
+                f"Quanto {P.o} subiu ou caiu ({unit}) em cada região {txt}?",
+                (f"variação {unit} {P.do} por região {txt}", True),
+            ]
+        elif scope == "bandeira":
+            opts = [
+                f"Qual a variação {unit} do preço médio {P.do} {txt} nas bandeiras {names}?",
+                f"Quanto {P.o} subiu ou caiu ({unit}) {txt} em cada uma destas bandeiras: {names}?",
+            ]
+        else:
+            opts = [
+                f"Qual a variação {unit} do preço médio de cada combustível {txt}?",
+                f"Quanto cada combustível subiu ou caiu ({unit}) {txt}?",
+                (f"variação {unit} do preço médio por produto {txt}", True),
+            ]
+        k = len(bands)
+        check = (lambda rows: None if len(rows) == k else "poucas_linhas") if bands else None
+        return Cand(_choose(t, opts), base, False, tags, check=check)
+    alta = t.chance(0.6)
+    sql, probe = ranked(base, alias, alta, 1, 1, sign=1 if alta else -1)
+    what = "a maior alta" if alta else "a maior queda"
+    if scope == "regiao":
+        opts = [
+            f"Qual região teve {what} {unit} do preço médio {P.do} {txt}?",
+            (f"região com {what} {unit} {P.do} {txt}", True),
+        ]
+    elif scope == "bandeira":
+        opts = [
+            f"Qual bandeira teve {what} {unit} {P.do} {txt}, entre {names}?",
+            f"Entre {names}, qual teve {what} {unit} no preço médio {P.do} {txt}?",
+        ]
+    else:
+        opts = [
+            f"Qual combustível teve {what} {unit} do preço médio {txt}?",
+            (f"combustível com {what} {unit} {txt}", True),
+        ]
+    return Cand(_choose(t, opts), sql, True, tags + ["ranking"], probe)
+
+
+def g_regra70_dois_periodos(t: Ctx) -> Cand:
+    pa, pb, ta, tb = _two_periods(t)
+    scope = t.pick(("ufs", "ufs", "capitais", "regioes", "cidades"))
+    preds: tuple[str, ...] = ()
+    if scope == "ufs":
+        cols, ents = ("uf",), "estados"
+        sc = ""
+        if t.chance(0.3):
+            r = t.regiao()
+            preds, sc = r.preds, r.de
+        ents = f"estados {sc}"
+    elif scope == "capitais":
+        gcols, preds, sc = _capitals_scope(t)
+        cols, ents = tuple(gcols.replace("m.", "").split(", ")), f"capitais {sc}"
+    elif scope == "regioes":
+        cols, ents = ("regiao",), "regiões"
+    else:
+        loc = _uf_with_cities(t, 4)
+        cols, preds = ("nome",), loc.preds
+        ents = t.city_nouns(loc, 0.3)[0]
+    g = ", ".join(f"m.{c}" for c in cols)
+
+    def part(per: Period) -> str:
+        return (
+            f"SELECT {g}, {RATIO} AS razao " + frm(need_m=True)
+            + where(E_G, *preds, per.pred()) + f" GROUP BY {g}"
+        )  # fmt: skip
+
+    on = " AND ".join(f"a.{c} = b.{c}" for c in cols)
+    mode = t.pick(("so_um", "so_um", "so_um", "ambos", "nenhum"))
+    tags = _tags("regra70", "periodo", "cte")
+    if mode == "so_um":
+        first_is_a = t.chance(0.5)
+        x, y = ("a", "b") if first_is_a else ("b", "a")
+        tx, ty = (ta, tb) if first_is_a else (tb, ta)
+        cond = f"{x}.razao <= 0.7 AND {y}.razao > 0.7"
+        opts = [
+            f"Em quais {ents} o etanol compensou {tx}, mas não {ty}?",
+            f"Quais {ents} tiveram o etanol compensando {tx} e não {ty}?",
+            (f"{ents} onde o etanol compensou {tx} mas não {ty}", True),
+        ]
+        if first_is_a:
+            opts.append(f"Em quais {ents} o etanol compensava {tx} e deixou de compensar {ty}?")
+        else:
+            opts.append(f"Em quais {ents} o etanol passou a compensar {tx}, depois de não compensar {ty}?")  # fmt: skip
+    elif mode == "ambos":
+        cond = "a.razao <= 0.7 AND b.razao <= 0.7"
+        opts = [
+            f"Em quais {ents} o etanol compensou tanto {ta} quanto {tb}?",
+            f"Quais {ents} tiveram o etanol compensando {ta} e também {tb}?",
+            (f"{ents} onde o etanol compensou nos dois períodos, {ta} e {tb}", True),
+        ]
+    else:
+        cond = "a.razao > 0.7 AND b.razao > 0.7"
+        opts = [
+            f"Em quais {ents} o etanol não compensou nem {ta} nem {tb}?",
+            (f"{ents} onde o etanol não compensou {ta} nem {tb}", True),
+        ]
+    sel = ", ".join(f"b.{c}" for c in cols)
+    cte = f"WITH a AS ({part(pa)}), b AS ({part(pb)})"
+    if t.chance(0.25):
+        fem = ents.startswith(("capitais", "regiões", "cidades"))
+        qt = "quantas" if fem else "quantos"
+        sql = f"{cte} SELECT COUNT(*) AS total FROM a JOIN b ON {on} WHERE {cond}"
+        q = _choose(t, opts)
+        q = re.sub(r"^Quais\b", qt.capitalize(), re.sub(r"^Em quais\b", f"Em {qt}", q))
+        if not q.startswith(("Em ", "Quant")):  # redação curta ("estados onde ...")
+            q = f"{qt} {q}?"
+        return Cand(say(q), sql, False, tags + ["contagem"])
+    sql = f"{cte} SELECT {sel} FROM a JOIN b ON {on} WHERE {cond} ORDER BY {sel.split(',')[0]}"
+    return Cand(_choose(t, opts), sql, False, tags)
+
+
+_PRODUCT_PAIRS_V2 = (
+    ("GNV", "ETANOL"),
+    ("GNV", "GASOLINA"),
+    ("DIESEL", "GASOLINA"),
+    ("DIESEL S10", "GASOLINA"),
+    ("GASOLINA ADITIVADA", "DIESEL S10"),
+    ("ETANOL", "GNV"),
+)
+
+
+def g_compara_produtos_grupo(t: Ctx) -> Cand:
+    a, b = t.pick(_PRODUCT_PAIRS_V2)
+    A, B = t.prod_text(a), t.prod_text(b)
+    per = t.period()
+    p = per.text(t.rng)
+    scope = t.pick(("capitais", "capitais", "ufs", "cidades", "regioes"))
+    preds: tuple[str, ...] = ()
+    if scope == "capitais":
+        cols, preds, sc = _capitals_scope(t)
+        ents = f"capitais {sc}"
+    elif scope == "ufs":
+        cols, ents = "m.uf", "estados"
+    elif scope == "regioes":
+        cols, ents = "m.regiao", "regiões"
+    else:
+        loc = _uf_with_cities(t, 4)
+        cols, preds = "m.nome", loc.preds
+        ents = t.city_nouns(loc, 0.3)[0]
+    cheaper = t.chance(0.6)
+    op = "<" if cheaper else ">"
+    sql = (
+        f"SELECT {cols} " + frm(need_m=True)
+        + where(f"c.produto IN ({sql_str(a)}, {sql_str(b)})", *preds, per.pred())
+        + f" GROUP BY {cols} HAVING {_avg_case(a)} {op} {_avg_case(b)} ORDER BY {cols.split(',')[0]}"
+    )  # fmt: skip
+    adj = A.adj(not cheaper)
+    menos = "menos" if cheaper else "mais"
+    opts = [
+        f"Quais {ents} tiveram {A.o} mais {adj} que {B.o}, em média, {p}?",
+        f"Em quais {ents} {A.o} custou {menos} que {B.o}, na média, {p}?",
+        (f"{ents} onde {A.o} saiu mais {adj} que {B.o} {p}", True),
+        (f"em quais {ents} {A.o} ficou mais {adj} que {B.o} {p}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, _tags(A.tag, B.tag, per.tag, "comparacao", "produto"))
+
+
+def g_razao_por_grupo(t: Ctx) -> Cand:
+    per = t.period({"last_month": 5, "year": 3, "month": 2, "none": 2, "semester": 1})
+    p = per.text(t.rng)
+    kind = t.pick(("bandeiras", "bandeiras", "capitais", "capitais", "regioes", "cidades"))
+    tags = _tags("regra70", per.tag)
+    if kind == "bandeiras":
+        loc = t.loc({"uf": 4, "regiao": 2, "big_city": 2, "brasil": 2})
+        bands = _bands_list(t, t.pick((3, 4, 4)))
+        lst = ", ".join(sql_str(b) for b in bands)
+        sql = (
+            f"SELECT p.bandeira, {RATIO} AS razao "
+            + frm(need_p=True, need_m=loc.needs_m)
+            + where(E_G, *loc.preds, f"p.bandeira IN ({lst})", per.pred())
+            + " GROUP BY p.bandeira"
+        )
+        names, w = _bands_text(t, bands), loc.em
+        opts = [
+            f"Qual a razão etanol/gasolina comum por bandeira {w} {p}, para as bandeiras {names}?",
+            f"Qual a razão entre o preço do etanol e o da gasolina {w} {p} em cada uma destas bandeiras: {names}?",
+            (f"razão etanol/gasolina {w} {p} por bandeira ({names})", True),
+        ]  # fmt: skip
+        k = len(bands)
+        return Cand(
+            _choose(t, opts), sql, False, tags + ["bandeira", loc.tag],
+            check=lambda rows: None if len(rows) == k else "poucas_linhas",
+        )  # fmt: skip
+    if kind == "capitais":
+        cols, preds, sc = _capitals_scope(t)
+        where_txt = f"em cada capital {sc}"
+        tags.append("capital")
+    elif kind == "regioes":
+        cols, preds, where_txt = "m.regiao", (), "em cada região"
+        tags.append("regiao")
+    else:
+        loc = _uf_with_cities(t, 3)
+        cols, preds, where_txt = "m.nome", loc.preds, f"em cada cidade {loc.de}"
+        tags.append("municipio")
+    sql = (
+        f"SELECT {cols}, {RATIO} AS razao " + frm(need_m=True)
+        + where(E_G, *preds, per.pred()) + f" GROUP BY {cols}"
+    )  # fmt: skip
+    opts = [
+        f"Qual a razão entre o preço médio do etanol e o da gasolina comum {where_txt} {p}?",
+        f"Qual foi a razão etanol/gasolina {where_txt} {p}?",
+        (f"razão etanol/gasolina {where_txt} {p}", True),
+        (f"qto o etanol custou em relação à gasolina {where_txt} {p}?", False),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags)
+
+
+def g_posicao_ranking(t: Ctx) -> Cand:
+    kind = t.pick(("uf", "uf", "capital", "cidade", "bandeira"))
+    tags = _tags("janela", "ranking")
+    if kind == "bandeira":
+        loc = t.loc({"brasil": 3, "uf": 3, "regiao": 2})
+        if loc.kind == "brasil":
+            loc = t.brasil(allow_empty=False)
+        b = t.pick([x for x in BIG_BANDS if x in t.cat.bandeiras])
+        branca_pred, branca_txt = t.branca_clause()
+        join = f" {J_M}" if loc.needs_m else ""
+        g = (
+            f"WITH g AS (SELECT p.bandeira, COUNT(*) AS postos FROM postos p{join}"
+            + where(*loc.preds, branca_pred) + " GROUP BY p.bandeira)"
+        )  # fmt: skip
+        vals = [int(v) for (v,) in t.query(f"{g} SELECT postos FROM g")]
+        mine = t.query(f"{g} SELECT postos FROM g WHERE bandeira = {sql_str(b)}")
+        if not mine or vals.count(int(mine[0][0])) > 1:
+            raise Skip("sem_parametro")
+        sql = (
+            f"{g}, r AS (SELECT bandeira, RANK() OVER (ORDER BY postos DESC) AS posicao FROM g) "
+            f"SELECT posicao FROM r WHERE bandeira = {sql_str(b)}"
+        )
+        name, w = BAND_NAMES[b], loc.em
+        opts = [
+            f"Qual a posição da {name} no ranking de bandeiras por número de postos {w}{branca_txt}?",
+            f"Em que lugar fica a {name} entre as bandeiras com mais postos {w}{branca_txt}?",
+            (f"posição da {name} no ranking de bandeiras por postos {w}{branca_txt}", True),
+        ]  # fmt: skip
+        return Cand(_choose(t, opts), sql, False, tags + ["bandeira", loc.tag])
+    P, per = t.prod(), t.period()
+    p = per.text(t.rng)
+    desc = t.chance(0.6)
+    if kind == "uf":
+        u = t.uf()
+        grp, preds, target, sel = "m.uf", (), f"uf = '{u.uf}'", "uf"
+        de_who = u.de
+        ents = "estados"
+        ordem = "do mais caro para o mais barato" if desc else "do mais barato para o mais caro"
+    else:
+        if kind == "capital":
+            m = t.pick(t.cat.capitals)
+            grp, preds, ents, sel = "m.nome, m.uf", ("m.capital",), "capitais", "nome, uf"
+            target = f"nome = {sql_str(m.nome)} AND uf = '{m.uf}'"
+        else:
+            uf = t.pick([x for x in t.cat.ufs if 4 <= len(t.cat.by_uf[x]) <= 80])
+            m = t.pick([x for x in t.cat.by_uf[uf] if x.postos >= 2] or t.cat.by_uf[uf])
+            loc_uf = t.uf(uf)
+            grp, preds, ents, sel = "m.nome", loc_uf.preds, f"cidades {loc_uf.de}", "nome"
+            target = f"nome = {sql_str(m.nome)}"
+        de_who = "de " + city_display(m.nome)
+        ordem = "da mais cara para a mais barata" if desc else "da mais barata para a mais cara"
+    # "do Paraná" -> "o Paraná"; "de SP" -> "SP"
+    who = re.sub(r"^de ", "", re.sub(r"^da ", "a ", re.sub(r"^do ", "o ", de_who)))
+    gq = (
+        f"WITH g AS (SELECT {grp}, AVG(c.valor_venda) AS preco " + frm(need_m=True)
+        + where(P.pred, *preds, per.pred()) + f" GROUP BY {grp})"
+    )  # fmt: skip
+    vals = [float(v) for (v,) in t.query(f"{gq} SELECT preco FROM g")]
+    mine = t.query(f"{gq} SELECT preco FROM g WHERE {target}")
+    if not mine or sum(1 for v in vals if _tie(v, mine[0][0])) > 1:
+        raise Skip("sem_parametro")
+    dir_ = " DESC" if desc else ""
+    sql = (
+        f"{gq}, r AS (SELECT {sel}, RANK() OVER (ORDER BY preco{dir_}) AS posicao FROM g) "
+        f"SELECT posicao FROM r WHERE {target}"
+    )
+    entre = "entre os estados" if ents == "estados" else f"entre as {ents}"
+    opts = [
+        f"Qual a posição {de_who} no ranking de {ents} por preço médio {P.do} ({ordem}) {p}?",
+        f"Em que posição ficou {who} {entre}, {ordem}, no preço médio {P.do} {p}?",
+        (f"posição {de_who} no ranking de {ents} {ordem} {P.do} {p}", True),
+    ]
+    return Cand(_choose(t, opts), sql, False, tags + [P.tag, per.tag, kind])
+
+
+def g_acumulado(t: Ctx) -> Cand:
+    P = t.prod() if t.chance(0.8) else None
+    loc = t.loc({"brasil": 4, "uf": 3, "regiao": 2, "big_city": 2})
+    per = t.period(PERIODS_MULTI, min_months=3)
+    w, p = loc.em, per.text(t.rng)
+    dep = f"de {P.text}" if P else ""
+    sql = (
+        "WITH mensal AS (SELECT date_trunc('month', c.data_coleta) AS mes, COUNT(*) AS coletas "
+        + frm(need_m=loc.needs_m) + where(P.pred if P else "", *loc.preds, per.pred())
+        + " GROUP BY mes) SELECT mes, SUM(coletas) OVER (ORDER BY mes) AS acumulado "
+        "FROM mensal ORDER BY mes"
+    )  # fmt: skip
+    opts = [
+        f"Qual o acumulado de coletas {dep} mês a mês {p} {w}?",
+        f"Mostre o total acumulado de coletas {dep} {w}, mês a mês, {p}.",
+        (f"coletas {dep} acumuladas por mês {w} {p}", True),
+        (f"qto deu o acumulado de coletas {dep} em cada mês {w} {p}?", False),
+        f"Como cresceu, mês a mês, o número acumulado de coletas {dep} {w} {p}?",
+    ]
+    return Cand(
+        _choose(t, opts), sql, False,
+        _tags(P.tag if P else "", loc.tag, per.tag, "janela", "serie", "acumulado"),
+    )  # fmt: skip
+
+
+def g_pico_por_grupo(t: Ctx) -> Cand:
+    kind = t.pick(("capitais", "capitais", "ufs", "regioes", "produtos", "bandeira"))
+    tags = _tags("janela", "ranking")
+    if kind == "bandeira":
+        branca_pred, branca_txt = ("", "") if t.chance(0.4) else t.branca_clause()
+        if t.chance(0.5):
+            g, preds, txt = "m.regiao", (), "em cada região"
+        else:
+            r = t.regiao()
+            g, preds, txt = "m.uf", r.preds, f"em cada estado {r.de}"
+        col = g.split(".")[1]
+        b = (
+            f"WITH b AS (SELECT {g}, p.bandeira, COUNT(*) AS postos FROM postos p {J_M}"
+            + where(*preds, branca_pred) + f" GROUP BY {g}, p.bandeira)"
+        )  # fmt: skip
+        sql = (
+            f"{b}, r AS (SELECT {col}, bandeira, ROW_NUMBER() OVER (PARTITION BY {col} "
+            f"ORDER BY postos DESC) AS pos FROM b) SELECT {col}, bandeira FROM r WHERE pos = 1 "
+            f"ORDER BY {col}"
+        )
+        probe = Probe(f"{b} SELECT {col}, bandeira, postos FROM b ORDER BY {col}, postos DESC",
+                      1, 2, group_index=0)  # fmt: skip
+        opts = [
+            f"Qual a bandeira com mais postos {txt}{branca_txt}?",
+            f"{txt.capitalize()}, qual bandeira tem mais postos{branca_txt}?",
+            (f"bandeira com mais postos {txt}{branca_txt}", True),
+        ]
+        return Cand(_choose(t, opts), sql, False, tags + ["bandeira"], probe)
+    P = t.prod() if kind != "produtos" else None
+    per = t.period({"year": 6, "last12": 2, "semester": 1}, min_months=6)
+    de = per.de(t.rng)
+    desc = t.chance(0.7)
+    preds: tuple[str, ...] = ()
+    if kind == "capitais":
+        r = t.regiao(t.pick(("N", "NE", "SE", "S", "CO")))
+        g, preds, txt = "m.nome", ("m.capital", *r.preds), f"Para cada capital {r.de}"
+    elif kind == "ufs":
+        r = t.regiao()
+        g, preds, txt = "m.uf", r.preds, f"Em cada estado {r.de}"
+    elif kind == "regioes":
+        g, txt = "m.regiao", "Para cada região"
+    else:
+        g, txt = "c.produto", "Para cada combustível"
+    col = g.split(".")[1]
+    mensal = (
+        f"WITH mensal AS (SELECT {g}, date_trunc('month', c.data_coleta) AS mes, "
+        "AVG(c.valor_venda) AS preco " + frm(need_m=kind != "produtos")
+        + where(P.pred if P else "", *preds, per.pred()) + f" GROUP BY {g}, mes)"
+    )  # fmt: skip
+    dir_ = " DESC" if desc else ""
+    sql = (
+        f"{mensal}, r AS (SELECT {col}, mes, ROW_NUMBER() OVER (PARTITION BY {col} "
+        f"ORDER BY preco{dir_}) AS pos FROM mensal) SELECT {col}, mes FROM r WHERE pos = 1 "
+        f"ORDER BY {col}"
+    )
+    probe = Probe(f"{mensal} SELECT {col}, mes, preco FROM mensal ORDER BY {col}, preco{dir_}",
+                  1, 2, group_index=0)  # fmt: skip
+    alto = "mais alto" if desc else "mais baixo"
+    if P:
+        adj = P.adj(desc)
+        opts = [
+            f"{txt}, qual foi o mês {de} com {P.o} mais {adj}?",
+            f"{txt}, em que mês {de} {P.o} esteve mais {adj}?",
+            (f"{txt.lower()}, o mês {de} com o preço médio {P.do} {alto}", True),
+        ]
+    else:
+        opts = [
+            f"{txt}, qual foi o mês {de} com o preço médio {alto}?",
+            f"{txt}, em que mês {de} o preço médio foi o {alto}?",
+        ]
+    return Cand(
+        _choose(t, opts), sql, False, tags + ([P.tag] if P else []) + [per.tag, "serie"], probe
+    )
+
+
 GENERATORS: dict[str, Callable[[Ctx], Cand]] = {
     "media_produto_uf": g_media_produto_uf,
     "media_produto_municipio": g_media_produto_municipio,
@@ -2643,6 +3879,24 @@ GENERATORS: dict[str, Callable[[Ctx], Cand]] = {
     "diferenca_produtos_uf": g_diferenca_produtos_uf,
     "janela_variacao_mensal": g_janela_variacao_mensal,
     "janela_ranking_por_grupo": g_janela_ranking_por_grupo,
+    # v2 (M15)
+    "postos_bairro": g_postos_bairro,
+    "filtro_contagem": g_filtro_contagem,
+    "serie_trimestral": g_serie_trimestral,
+    "postos_condicao_preco": g_postos_condicao_preco,
+    "tanto_quanto": g_tanto_quanto,
+    "todos_os": g_todos_os,
+    "participacao_pct": g_participacao_pct,
+    "regiao_vs_estado": g_regiao_vs_estado,
+    "media_da_serie": g_media_da_serie,
+    "nunca_coleta": g_nunca_coleta,
+    "variacao_grupos": g_variacao_grupos,
+    "regra70_dois_periodos": g_regra70_dois_periodos,
+    "compara_produtos_grupo": g_compara_produtos_grupo,
+    "razao_por_grupo": g_razao_por_grupo,
+    "posicao_ranking": g_posicao_ranking,
+    "acumulado": g_acumulado,
+    "pico_por_grupo": g_pico_por_grupo,
 }
 
 

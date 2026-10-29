@@ -10,6 +10,11 @@ Distribuição alvo do treino (M4): 35% fácil, 40% médio, 25% difícil. Dentro
 do nível difícil, intenções com janela têm peso menor para que fiquem abaixo de
 20% do nível (D6).
 
+Treino v2 (M15, D34): 17 intenções novas, cada uma ligada a um padrão que o ft-v1
+errou no **dev2** (`results/training-v2.md`; o teste não é lido). A distribuição
+alvo passa a 28% fácil, 36% médio e 36% difícil: o fácil (97% no dev2) mantém o
+volume da v1, e o difícil (50%) ganha o que é novo.
+
 `allocate(n_requests)` reparte as requisições do lote entre as intenções de
 forma determinística: primeiro entre os níveis (maior resto), depois entre as
 intenções de cada nível pelos pesos (maior resto, desempate por ordem fixa
@@ -24,10 +29,12 @@ from dataclasses import dataclass, field
 from fractions import Fraction
 
 LEVELS = ("facil", "medio", "dificil")
+# v1 (M4): 35/40/25. v2 (M15): 28/36/36, com `tanque gen templates --n 13000`, o fácil
+# fica com ~250 candidatos por intenção, como na v1.
 TARGET_DISTRIBUTION: dict[str, Fraction] = {
-    "facil": Fraction(35, 100),
-    "medio": Fraction(40, 100),
-    "dificil": Fraction(25, 100),
+    "facil": Fraction(28, 100),
+    "medio": Fraction(36, 100),
+    "dificil": Fraction(36, 100),
 }
 MAX_WINDOW_SHARE_OF_HARD = Fraction(20, 100)
 _ALLOCATION_SEED = 20261028
@@ -281,6 +288,24 @@ INTENTS: tuple[Intent, ...] = (
         ),
         tags=("datas",),
     ),
+    # v2 (M15): bairro escrito como uma pessoa escreve, filtrado com a grafia da ANP.
+    Intent(
+        id="postos_bairro",
+        level="facil",
+        uses_window=False,
+        title="Postos ou preço num bairro",
+        description="quantos postos há num bairro de uma cidade, ou o preço médio de um "
+        "combustível nele; o bairro é filtrado com a grafia do banco (maiúsculas, sem acento).",
+        sql_shape="SELECT COUNT(*) AS postos\nFROM postos p\n"
+        "JOIN municipios m ON m.municipio_id = p.municipio_id\n"
+        "WHERE p.bairro = 'BOA VIAGEM' AND m.nome = 'RECIFE' AND m.uf = 'PE'",
+        variations=(
+            "bairro com acento e em minúsculas na pergunta ('Boa Viagem')",
+            "contagem de postos ou preço médio de um produto, com e sem período",
+        ),
+        tags=("bairro", "contagem"),
+        weight=Fraction(1, 2),
+    ),
     # ------------------------------------------------------------------ médio
     Intent(
         id="ranking_uf_preco",
@@ -522,7 +547,7 @@ INTENTS: tuple[Intent, ...] = (
         uses_window=False,
         title="Dois produtos lado a lado",
         description="preço médio de dois combustíveis em colunas separadas, por UF ou cidade "
-        "(agregação condicional).",
+        "(agregação condicional). Num lugar só (v2), uma linha por produto.",
         sql_shape="SELECT m.uf,\n"
         "  AVG(CASE WHEN c.produto = 'DIESEL' THEN c.valor_venda END) AS diesel,\n"
         "  AVG(CASE WHEN c.produto = 'DIESEL S10' THEN c.valor_venda END) AS diesel_s10\n"
@@ -533,6 +558,55 @@ INTENTS: tuple[Intent, ...] = (
             "por UF ou por capital",
         ),
         tags=("comparacao", "produto"),
+    ),
+    # v2 (M15): padrões médios que o ft-v1 errou no dev2.
+    Intent(
+        id="filtro_contagem",
+        level="medio",
+        uses_window=False,
+        title="Grupos com mais (ou menos) de N postos ou coletas",
+        description="bandeiras, estados ou municípios com mais (ou menos) de N postos, ou de N "
+        "coletas de um produto; devolve a entidade e a contagem (HAVING COUNT).",
+        sql_shape="SELECT m.nome, COUNT(*) AS postos\nFROM postos p\n"
+        "JOIN municipios m ON m.municipio_id = p.municipio_id\nWHERE m.uf = 'PR'\n"
+        "GROUP BY m.nome\nHAVING COUNT(*) > 50",
+        variations=(
+            "bandeiras, estados ou municípios; mais de / menos de N",
+            "estados pelo gentílico ('municípios gaúchos', 'cidades paulistas')",
+        ),
+        tags=("contagem", "filtro_agregado"),
+    ),
+    Intent(
+        id="serie_trimestral",
+        level="medio",
+        uses_window=False,
+        title="Preço médio por trimestre ou por ano",
+        description="preço médio (ou número de coletas) por trimestre de um ano, ou por ano; "
+        "trimestre = quarter(...) e ano = year(...), inteiros.",
+        sql_shape="SELECT quarter(c.data_coleta) AS trimestre, AVG(c.valor_venda) AS preco_medio\n"
+        "FROM coletas c\nWHERE c.produto = 'GASOLINA' AND c.data_coleta >= DATE '2026-01-01'"
+        " AND c.data_coleta < DATE '2027-01-01'\nGROUP BY trimestre\nORDER BY trimestre",
+        variations=(
+            "'por trimestre', 'em cada trimestre', 'por ano', 'ano a ano'",
+            "Brasil, UF, região ou cidade",
+        ),
+        tags=("serie", "trimestre"),
+    ),
+    Intent(
+        id="postos_condicao_preco",
+        level="medio",
+        uses_window=False,
+        title="Postos com preço acima ou abaixo de um valor",
+        description="quantos postos (ou cidades) tiveram coleta de um combustível acima (ou "
+        "abaixo) de um valor em reais; postos contados com COUNT(DISTINCT c.posto_id).",
+        sql_shape=f"SELECT COUNT(DISTINCT c.posto_id) AS postos\n{_J}\n"
+        "WHERE c.produto = 'ETANOL' AND m.uf = 'MG' AND c.valor_venda > 4.5\n"
+        "  AND c.data_coleta >= DATE '2026-09-01' AND c.data_coleta < DATE '2026-10-01'",
+        variations=(
+            "acima e abaixo; postos ou cidades",
+            "UF, região, cidade ou Brasil; com período",
+        ),
+        tags=("contagem", "posto", "limite"),
     ),
     # ---------------------------------------------------------------- difícil
     Intent(
@@ -744,6 +818,269 @@ INTENTS: tuple[Intent, ...] = (
             "UF por região, município por UF",
         ),
         tags=("janela", "ranking"),
+        weight=Fraction(3, 4),
+    ),
+    # v2 (M15, D34): padrões difíceis que o ft-v1 errou no dev2.
+    Intent(
+        id="tanto_quanto",
+        level="dificil",
+        uses_window=False,
+        title="Tanto em X quanto em Y",
+        description="postos, cidades ou bandeiras presentes nos dois recortes: coleta de um "
+        "produto em dois períodos, dois produtos no mesmo período, ou duas UFs (INTERSECT).",
+        sql_shape="SELECT COUNT(*) AS postos FROM (\n"
+        f"  SELECT c.posto_id {_J.replace(chr(10), ' ')}\n"
+        "  WHERE c.produto = 'ETANOL' AND m.nome = 'RECIFE' AND m.uf = 'PE'\n"
+        "    AND c.data_coleta >= DATE '2025-09-01' AND c.data_coleta < DATE '2025-10-01'\n"
+        "  INTERSECT\n"
+        f"  SELECT c.posto_id {_J.replace(chr(10), ' ')}\n"
+        "  WHERE c.produto = 'ETANOL' AND m.nome = 'RECIFE' AND m.uf = 'PE'\n"
+        "    AND c.data_coleta >= DATE '2026-09-01' AND c.data_coleta < DATE '2026-10-01'\n"
+        ") t",
+        variations=(
+            "'tanto em ... quanto em ...', 'nos dois períodos', 'e também'",
+            "postos de uma cidade, cidades de uma UF, bandeiras em duas UFs",
+        ),
+        tags=("intersecao", "cte"),
+    ),
+    Intent(
+        id="todos_os",
+        level="dificil",
+        uses_window=False,
+        title="Todos os municípios / todos os meses",
+        description="grupos em que todos os membros cumprem a condição: estados em que todos "
+        "os municípios tiveram o etanol compensando, ou locais com preço acima de R$ X em "
+        "todos os meses de um período.",
+        sql_shape="WITH r AS (\n  SELECT m.uf, m.nome,\n"
+        "    AVG(CASE WHEN c.produto = 'ETANOL' THEN c.valor_venda END)\n"
+        "      / AVG(CASE WHEN c.produto = 'GASOLINA' THEN c.valor_venda END) AS razao\n"
+        f"  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.produto IN ('ETANOL', 'GASOLINA') AND m.regiao = 'NE'\n"
+        "    AND c.data_coleta >= DATE '2025-01-01' AND c.data_coleta < DATE '2026-01-01'\n"
+        "  GROUP BY m.uf, m.nome\n)\n"
+        "SELECT uf FROM r\nGROUP BY uf\nHAVING bool_and(razao <= 0.7)\nORDER BY uf",
+        variations=(
+            "'todos os municípios', 'todas as cidades', 'em todos os meses', 'nenhum'",
+            "regra dos 70% ou limiar em reais; estados, capitais ou cidades de uma UF",
+        ),
+        tags=("todos", "cte"),
+    ),
+    Intent(
+        id="participacao_pct",
+        level="dificil",
+        uses_window=False,
+        title="Participação percentual",
+        description="percentual de postos de uma bandeira (ou de coletas de um produto) no "
+        "total de um grupo: por região/UF, num local, ou o ranking dos maiores percentuais.",
+        sql_shape="SELECT m.regiao,\n"
+        "  100.0 * COUNT(CASE WHEN p.bandeira = 'VIBRA' THEN 1 END) / COUNT(*) AS pct\n"
+        "FROM postos p\nJOIN municipios m ON m.municipio_id = p.municipio_id\n"
+        "GROUP BY m.regiao",
+        variations=(
+            "'percentual', 'participação', 'que fração', 'que % dos'",
+            "bandeiras (inclusive branca) ou produtos; região, UF ou cidade",
+        ),
+        tags=("percentual", "contagem"),
+    ),
+    Intent(
+        id="regiao_vs_estado",
+        level="dificil",
+        uses_window=False,
+        title="Capital x interior, estado x região",
+        description="comparações entre níveis geográficos: a capital contra o resto do "
+        "estado, ou cada estado contra a média da sua região.",
+        sql_shape=f"SELECT m.uf\n{_J}\n"
+        "WHERE c.produto = 'ETANOL' AND c.data_coleta >= DATE '2025-01-01'"
+        " AND c.data_coleta < DATE '2026-01-01'\nGROUP BY m.uf\n"
+        "HAVING AVG(CASE WHEN m.capital THEN c.valor_venda END)\n"
+        "     > AVG(CASE WHEN NOT m.capital THEN c.valor_venda END)\nORDER BY m.uf",
+        variations=(
+            "'capital x interior', 'resto do estado', 'média da região'",
+            "lista de estados, diferença em reais por estado ou de um estado",
+        ),
+        tags=("comparacao", "regiao", "capital"),
+    ),
+    Intent(
+        id="media_da_serie",
+        level="dificil",
+        uses_window=False,
+        title="Contra a média do período ou da cidade",
+        description="meses acima da média do ano, amplitude entre o mês mais caro e o mais "
+        "barato, ou postos abaixo da média da cidade (CTE + subconsulta).",
+        sql_shape="WITH mensal AS (\n"
+        "  SELECT date_trunc('month', c.data_coleta) AS mes, AVG(c.valor_venda) AS preco\n"
+        "  FROM coletas c\n  WHERE c.produto = 'ETANOL' AND c.data_coleta >= DATE '2026-01-01'"
+        " AND c.data_coleta < DATE '2027-01-01'\n  GROUP BY mes\n)\n"
+        "SELECT COUNT(*) AS meses FROM mensal\nWHERE preco > (SELECT AVG(c.valor_venda) "
+        "FROM coletas c WHERE c.produto = 'ETANOL'\n"
+        "  AND c.data_coleta >= DATE '2026-01-01' AND c.data_coleta < DATE '2027-01-01')",
+        variations=(
+            "quantos/quais meses acima ou abaixo da média do ano",
+            "amplitude das médias mensais; postos abaixo/acima da média da cidade",
+        ),
+        tags=("subconsulta", "serie", "cte"),
+    ),
+    Intent(
+        id="nunca_coleta",
+        level="dificil",
+        uses_window=False,
+        title="Nunca tiveram coleta",
+        description="municípios ou postos sem nenhuma coleta de um produto (no período), "
+        "por NOT IN; lista ou contagem.",
+        sql_shape="SELECT m.nome\nFROM municipios m\n"
+        "WHERE m.uf = 'BA' AND m.municipio_id NOT IN (\n"
+        "  SELECT p.municipio_id FROM coletas c\n"
+        "  JOIN postos p ON p.posto_id = c.posto_id\n  WHERE c.produto = 'GNV'\n)",
+        variations=(
+            "'nunca', 'nenhuma coleta', 'sem coleta de'",
+            "municípios de uma UF ou postos de uma cidade; lista ou contagem",
+        ),
+        tags=("subconsulta", "negacao"),
+    ),
+    Intent(
+        id="variacao_grupos",
+        level="dificil",
+        uses_window=False,
+        title="Variação entre períodos por região, bandeira ou produto",
+        description="variação (R$ ou %) do preço médio entre dois períodos em cada região, "
+        "em bandeiras citadas ou em cada produto; ou o grupo com a maior alta/queda.",
+        sql_shape="WITH a AS (\n"
+        f"  SELECT m.regiao, AVG(c.valor_venda) AS p\n  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.produto = 'GASOLINA' AND c.data_coleta >= DATE '2026-01-01'"
+        " AND c.data_coleta < DATE '2026-02-01'\n  GROUP BY m.regiao\n), b AS (\n"
+        f"  SELECT m.regiao, AVG(c.valor_venda) AS p\n  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.produto = 'GASOLINA' AND c.data_coleta >= DATE '2026-04-01'"
+        " AND c.data_coleta < DATE '2026-05-01'\n  GROUP BY m.regiao\n)\n"
+        "SELECT a.regiao, b.p - a.p AS variacao\nFROM a JOIN b ON a.regiao = b.regiao",
+        variations=(
+            "regiões, bandeiras citadas (IN) ou produtos",
+            "'comparando a média de junho com a de março', anos, meses, semestres",
+        ),
+        tags=("variacao", "periodo", "cte"),
+    ),
+    Intent(
+        id="regra70_dois_periodos",
+        level="dificil",
+        uses_window=False,
+        title="Regra dos 70% em dois períodos",
+        description="locais em que o etanol compensou num período mas não no outro, nos dois "
+        "ou em nenhum (CTE por período + JOIN).",
+        sql_shape="WITH a AS (\n  SELECT m.uf,\n"
+        "    AVG(CASE WHEN c.produto = 'ETANOL' THEN c.valor_venda END)\n"
+        "      / AVG(CASE WHEN c.produto = 'GASOLINA' THEN c.valor_venda END) AS razao\n"
+        f"  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.data_coleta >= DATE '2025-01-01' AND c.data_coleta < DATE '2025-07-01'\n"
+        "  GROUP BY m.uf\n), b AS (\n  SELECT m.uf,\n"
+        "    AVG(CASE WHEN c.produto = 'ETANOL' THEN c.valor_venda END)\n"
+        "      / AVG(CASE WHEN c.produto = 'GASOLINA' THEN c.valor_venda END) AS razao\n"
+        f"  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.data_coleta >= DATE '2026-01-01' AND c.data_coleta < DATE '2026-07-01'\n"
+        "  GROUP BY m.uf\n)\n"
+        "SELECT b.uf FROM a JOIN b ON a.uf = b.uf\n"
+        "WHERE b.razao <= 0.7 AND a.razao > 0.7\nORDER BY b.uf",
+        variations=(
+            "'em X, mas não em Y', 'deixou de compensar', 'nos dois períodos'",
+            "estados, capitais, regiões ou cidades de uma UF",
+        ),
+        tags=("regra70", "periodo", "cte"),
+    ),
+    Intent(
+        id="compara_produtos_grupo",
+        level="dificil",
+        uses_window=False,
+        title="Onde um produto foi mais barato que outro",
+        description="locais em que o preço médio de um combustível ficou abaixo (ou acima) do "
+        "de outro, sem a regra dos 70% (HAVING com duas médias condicionais).",
+        sql_shape=f"SELECT m.nome, m.uf\n{_J}\n"
+        "WHERE c.produto IN ('DIESEL', 'GASOLINA') AND m.capital\n"
+        "  AND c.data_coleta >= DATE '2025-01-01' AND c.data_coleta < DATE '2026-01-01'\n"
+        "GROUP BY m.nome, m.uf\n"
+        "HAVING AVG(CASE WHEN c.produto = 'DIESEL' THEN c.valor_venda END)\n"
+        "     < AVG(CASE WHEN c.produto = 'GASOLINA' THEN c.valor_venda END)\nORDER BY m.nome",
+        variations=(
+            "GNV x etanol, diesel x gasolina, S10 x gasolina",
+            "capitais, estados, cidades de uma UF, regiões",
+        ),
+        tags=("comparacao", "produto"),
+    ),
+    Intent(
+        id="razao_por_grupo",
+        level="dificil",
+        uses_window=False,
+        title="Razão etanol/gasolina por grupo",
+        description="a razão etanol/gasolina comum em cada bandeira citada, capital, região "
+        "ou cidade de uma UF, sem ordenar nem filtrar pela regra.",
+        sql_shape="SELECT p.bandeira,\n"
+        "  AVG(CASE WHEN c.produto = 'ETANOL' THEN c.valor_venda END)\n"
+        "    / AVG(CASE WHEN c.produto = 'GASOLINA' THEN c.valor_venda END) AS razao\n"
+        f"{_J}\nWHERE c.produto IN ('ETANOL', 'GASOLINA') AND m.uf = 'SC'\n"
+        "  AND p.bandeira IN ('VIBRA', 'IPIRANGA', 'RAIZEN', 'BRANCA')\nGROUP BY p.bandeira",
+        variations=(
+            "bandeiras citadas (IN), capitais de uma região, regiões, cidades de uma UF",
+            "último mês, ano, mês específico",
+        ),
+        tags=("regra70", "agrupamento"),
+    ),
+    Intent(
+        id="posicao_ranking",
+        level="dificil",
+        uses_window=True,
+        title="Posição num ranking",
+        description="a posição de um estado, capital, cidade ou bandeira no ranking por preço "
+        "médio (ou número de postos): RANK() OVER e filtro na entidade.",
+        sql_shape="WITH u AS (\n  SELECT m.uf, AVG(c.valor_venda) AS preco\n"
+        f"  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.produto = 'ETANOL' AND c.data_coleta >= DATE '2025-01-01'"
+        " AND c.data_coleta < DATE '2026-01-01'\n"
+        "  GROUP BY m.uf\n), r AS (\n"
+        "  SELECT uf, RANK() OVER (ORDER BY preco) AS posicao FROM u\n)\n"
+        "SELECT posicao FROM r WHERE uf = 'MG'",
+        variations=(
+            "'posição', 'em que lugar ficou', 'colocação'",
+            "do mais caro para o mais barato e vice-versa; UF, capital, cidade, bandeira",
+        ),
+        tags=("janela", "ranking"),
+        weight=Fraction(3, 4),
+    ),
+    Intent(
+        id="acumulado",
+        level="dificil",
+        uses_window=True,
+        title="Acumulado mês a mês",
+        description="soma acumulada, mês a mês, do número de coletas num local e período "
+        "(SUM() OVER (ORDER BY mes)).",
+        sql_shape="WITH mensal AS (\n"
+        "  SELECT date_trunc('month', c.data_coleta) AS mes, COUNT(*) AS coletas\n"
+        "  FROM coletas c\n  WHERE c.produto = 'DIESEL S10' AND c.data_coleta >= DATE '2026-01-01'"
+        " AND c.data_coleta < DATE '2027-01-01'\n  GROUP BY mes\n)\n"
+        "SELECT mes, SUM(coletas) OVER (ORDER BY mes) AS acumulado\nFROM mensal\nORDER BY mes",
+        variations=(
+            "'acumulado', 'total acumulado', 'soma corrida'",
+            "por produto ou todas as coletas; Brasil, UF, região ou cidade",
+        ),
+        tags=("janela", "serie", "acumulado"),
+        weight=Fraction(3, 4),
+    ),
+    Intent(
+        id="pico_por_grupo",
+        level="dificil",
+        uses_window=True,
+        title="O mês (ou a bandeira) de pico em cada grupo",
+        description="para cada grupo, o mês com o preço médio mais alto/baixo, ou a bandeira "
+        "com mais postos; devolve o grupo e o item escolhido (ROW_NUMBER por grupo).",
+        sql_shape="WITH mensal AS (\n"
+        "  SELECT m.nome, date_trunc('month', c.data_coleta) AS mes, AVG(c.valor_venda) AS preco\n"
+        f"  {_J.replace(chr(10), chr(10) + '  ')}\n"
+        "  WHERE c.produto = 'ETANOL' AND m.capital AND m.regiao = 'NE'\n"
+        "    AND c.data_coleta >= DATE '2026-01-01' AND c.data_coleta < DATE '2027-01-01'\n"
+        "  GROUP BY m.nome, mes\n), r AS (\n"
+        "  SELECT nome, mes, ROW_NUMBER() OVER (PARTITION BY nome ORDER BY preco DESC) AS pos\n"
+        "  FROM mensal\n)\nSELECT nome, mes FROM r WHERE pos = 1 ORDER BY nome",
+        variations=(
+            "'para cada capital', 'em cada estado', 'por região', 'cada combustível'",
+            "mês mais caro ou mais barato; bandeira com mais postos por região",
+        ),
+        tags=("janela", "ranking", "serie"),
         weight=Fraction(3, 4),
     ),
 )

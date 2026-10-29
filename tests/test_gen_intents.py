@@ -7,9 +7,10 @@ from tanque.gen import intents
 from tanque.sql import guard
 
 
-def test_catalog_has_about_40_unique_intents():
+def test_catalog_has_the_v1_and_v2_intents():
     ids = [i.id for i in intents.INTENTS]
-    assert 35 <= len(ids) <= 45
+    # 40 da v1 (M4) + 17 da v2 (M15, D34)
+    assert len(ids) == 57
     assert len(ids) == len(set(ids))
     assert all(i.level in intents.LEVELS for i in intents.INTENTS)
 
@@ -23,10 +24,11 @@ def test_every_level_has_intents_and_window_only_in_hard():
 
 def test_target_distribution_sums_to_one():
     assert sum(intents.TARGET_DISTRIBUTION.values()) == 1
+    # v2 (M15): 28/36/36 (a v1 era 35/40/25)
     assert intents.TARGET_DISTRIBUTION == {
-        "facil": Fraction(35, 100),
-        "medio": Fraction(40, 100),
-        "dificil": Fraction(25, 100),
+        "facil": Fraction(28, 100),
+        "medio": Fraction(36, 100),
+        "dificil": Fraction(36, 100),
     }
 
 
@@ -49,7 +51,7 @@ def test_pilot_allocation_covers_20_distinct_intents_in_target_split():
     chosen = intents.allocate(20)
     assert len(chosen) == 20
     assert len({i.id for i in chosen}) == 20
-    assert Counter(i.level for i in chosen) == {"facil": 7, "medio": 8, "dificil": 5}
+    assert Counter(i.level for i in chosen) == {"facil": 6, "medio": 7, "dificil": 7}
 
 
 @pytest.mark.parametrize("n", [1, 7, 100, 480, 500])
