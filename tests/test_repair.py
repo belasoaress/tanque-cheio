@@ -368,8 +368,11 @@ def test_score_accepts_retry_files(tmp_path, m2_toy_db, m2_toy_items, m2_dataset
 
     # check-metrics recalcula de todos os `<sistema>__<split>.jsonl`, inclusive o `+retry`.
     data = recompute_all(single_path.parent, m2_dataset.parent, db_path=m2_toy_db)
-    assert set(data) == {"base-toy", "base-toy+retry"}
+    # `comparisons` (5.7 v2, M12) traz o par pareado <s> × <s>+retry.
+    assert set(data) == {"base-toy", "base-toy+retry", "comparisons"}
     assert data["base-toy+retry"]["dev"] == retried.metrics
+    assert [(c["a"], c["b"]) for c in data["comparisons"]] == [("base-toy", "base-toy+retry")]
+    assert data["comparisons"][0]["delta_ex"] == 0.5
 
 
 def test_report_tables_list_retry_systems(tmp_path, m2_toy_db, m2_toy_items, m2_dataset):
