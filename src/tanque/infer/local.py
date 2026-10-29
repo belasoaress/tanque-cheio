@@ -1,7 +1,9 @@
 """Previsões de um modelo open-source local (transformers), no formato da seção 5.3 (M5/M6).
 
 Usado pelos notebooks `03_predict.ipynb` (um modelo, um split) e
-`01_bakeoff.ipynb` (vários candidatos no dev), que rodam no Kaggle. O código
+`01_bakeoff.ipynb` (vários candidatos no dev), que rodam no Kaggle, e pelos
+seguintes (04 no teste; 05, os modelos maiores no dev2, via
+`tanque.infer.large`). O código
 fica no pacote, e não nos notebooks, para os dois usarem a mesma lógica e para
 ela ser testada sem GPU (`tests/test_infer_local.py`, com modelo e tokenizer
 falsos; `tests/test_infer_local_hf.py`, com um modelo minúsculo em CPU).
@@ -34,9 +36,33 @@ Decisões:
   tokens gerados (inclui o token de fim, se houver). Saída cortada em
   `max_new_tokens` **não** vira `error`: a SQL extraída é avaliada como está;
   `summarize` conta esses casos.
-- **Precisão:** fp16 por padrão (a T4 não tem bf16 nativo). Sem 4-bit na
-  inferência base, para não depender de bitsandbytes e para medir o modelo
-  como ele é; o QLoRA do M6 quantiza só no treino.
+- **Precisão:** fp16 por padrão (a T4 não tem bf16 nativo). O 1,5B (base e
+  ft) roda assim, sem 4-bit, para não depender de bitsandbytes e para medir o
+  modelo como ele é; o QLoRA do M6 quantiza só no treino.
+- **Modelos maiores (v2, M14, D27):** `quantization="nf4"` carrega o modelo em
+  4 bits com `BitsAndBytesConfig` (nf4, quantização dupla, computação em fp16;
+  `bnb_config_kwargs`). Precisa de bitsandbytes e de GPU (o notebook
+  `05_large_baselines` instala). `device` vira o `device_map` do
+  `from_pretrained`: `"cuda"` (padrão, igual à v1), `{"": 0}` (tudo na GPU 0)
+  ou `"auto"` (o accelerate reparte as camadas entre as GPUs visíveis, com
+  `max_memory` opcional por GPU). As GPUs usadas saem do `hf_device_map` do
+  modelo (`gpu_indices`).
+- **Memória e GPUs (5.3 v2):** antes de carregar, o pico de memória de cada GPU
+  visível é zerado; no fim, `peak_gpu_mem_gib` = o maior
+  `torch.cuda.max_memory_allocated` entre as GPUs usadas, em GiB (2 casas).
+  Cada previsão (single-shot e `+retry`) e o run-info ganham `quantization`
+  (`"nf4"` ou `null` sem quantização; o `dtype` fica no run-info), `gpus` (0 em
+  CPU) e `peak_gpu_mem_gib` (`null` em CPU), o pico da execução inteira. O custo
+  (D35) é `gpus × gpu_hour_usd` de `configs/settings.toml`, calculado no
+  relatório.
+- **Checkpoint por item e limite de tempo (M14, D37):** cada previsão é gravada
+  no JSONL assim que sai (append + flush). Com `resume=True`, os itens que já
+  estão nos arquivos (no single-shot e, com `retry`, também no `+retry`) são
+  pulados; uma linha final cortada é descartada. Com `time_budget_s`, o laço
+  para antes de começar um item quando o tempo desde o início de
+  `run_predictions` (download e carga inclusos) passa do limite; o run-info
+  registra `stopped_reason = "time_budget"` e `completed` < `n_items`. No fim,
+  os arquivos são reescritos com o pico de memória final em todas as linhas.
 - **Adapter (M6/M7):** `adapter_id` (repo do HF ou pasta local, ex.:
   `/kaggle/working/adapter`) carrega o LoRA com `PeftModel.from_pretrained`
   sobre o base em fp16; o sistema vira `ft-<modelo>`. Por padrão
@@ -234,32 +260,78 @@ class HFGenerator:
         return Generation(text, int(input_ids.shape[1]), len(new_ids))
 
 
+QUANTIZATIONS = ("nf4",)
+
+DeviceMap = str | dict[str, Any]
+
+
+def bnb_config_kwargs(quantization: str, compute_dtype: str = "float16") -> dict[str, Any]:
+    """Argumentos do `BitsAndBytesConfig` para `quantization` (D27: nf4 em 4 bits).
+
+    nf4 com quantização dupla (as constantes de escala também em 8 bits) e
+    computação em fp16, porque a T4 não tem bf16 nativo.
+    """
+    if quantization not in QUANTIZATIONS:
+        raise ValueError(f"quantização desconhecida: {quantization!r} (aceitas: {QUANTIZATIONS})")
+    return {
+        "load_in_4bit": True,
+        "bnb_4bit_quant_type": "nf4",
+        "bnb_4bit_use_double_quant": True,
+        "bnb_4bit_compute_dtype": compute_dtype,
+    }
+
+
+def make_quantization_config(quantization: str | None, compute_dtype: str = "float16") -> Any:
+    """`BitsAndBytesConfig` para `quantization`, ou None sem quantização."""
+    if quantization is None:
+        return None
+    import torch
+    from transformers import BitsAndBytesConfig
+
+    kwargs = bnb_config_kwargs(quantization, compute_dtype)
+    kwargs["bnb_4bit_compute_dtype"] = getattr(torch, kwargs["bnb_4bit_compute_dtype"])
+    return BitsAndBytesConfig(**kwargs)
+
+
 def load_model(
     model_id: str,
     adapter_id: str | None = None,
     *,
     dtype: str = "float16",
-    device: str = "cuda",
+    device: DeviceMap = "cuda",
     revision: str | None = None,
     adapter_revision: str | None = None,
     merge_adapter: bool = True,
+    quantization: str | None = None,
+    max_memory: dict[Any, str] | None = None,
 ) -> tuple[Any, Any]:
     """(modelo, tokenizer) do Hugging Face, em `dtype`, com o adapter LoRA opcional.
 
     Com adapter e `merge_adapter=True`, devolve o modelo base com o LoRA fundido
     (um `PreTrainedModel` comum, sem `PeftModel` em volta).
+
+    `device` é o `device_map` (`"cuda"`, `"cpu"`, `{"": 0}`, `"auto"`...);
+    `quantization="nf4"` carrega em 4 bits (precisa de bitsandbytes e GPU);
+    `max_memory` limita a memória por GPU com `device_map="auto"`.
     """
     import torch
     import transformers
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
+    if quantization is not None and adapter_id:
+        raise ValueError("adapter sobre modelo quantizado não é suportado (fundir exige fp16)")
     torch_dtype = getattr(torch, dtype)
     tokenizer = AutoTokenizer.from_pretrained(model_id, revision=revision)
     # `dtype=` existe a partir do transformers 4.56; antes era `torch_dtype=`.
     major, minor = (int(x) for x in transformers.__version__.split(".")[:2])
     dtype_kw = "dtype" if (major, minor) >= (4, 56) else "torch_dtype"
+    extra: dict[str, Any] = {}
+    if quantization is not None:
+        extra["quantization_config"] = make_quantization_config(quantization, dtype)
+    if max_memory is not None:
+        extra["max_memory"] = max_memory
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, revision=revision, device_map=device, **{dtype_kw: torch_dtype}
+        model_id, revision=revision, device_map=device, **{dtype_kw: torch_dtype}, **extra
     )
     if adapter_id:
         from peft import PeftModel
@@ -413,12 +485,118 @@ def _resolved_revision(model_id: str, revision: str | None) -> tuple[str | None,
         return revision, f"{type(e).__name__}: {e}"
 
 
-def _device_name(device: str) -> str | None:
+def _uses_cuda(device: DeviceMap) -> bool:
+    if isinstance(device, dict):
+        return bool(gpu_indices(device.values()))
+    return device == "auto" or str(device).startswith("cuda")
+
+
+def _device_name(device: DeviceMap) -> str | None:
+    """Nome da GPU 0 (a mesma placa em todas as GPUs do Kaggle), ou None sem GPU."""
     import torch
 
-    if device.startswith("cuda") and torch.cuda.is_available():
+    if _uses_cuda(device) and torch.cuda.is_available():
         return torch.cuda.get_device_name(0)
     return None
+
+
+# --- GPUs e memória (5.3 v2) ------------------------------------------------------
+
+
+def _gpu_index(value: Any) -> int | None:
+    """Índice da GPU de um valor do `device_map` (0, "cuda", "cuda:1", torch.device)."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    text = str(value)
+    if text == "cuda":
+        return 0
+    m = re.fullmatch(r"cuda:(\d+)", text)
+    return int(m.group(1)) if m else None  # "cpu", "disk", "mps"...
+
+
+def gpu_indices(devices: Iterable[Any]) -> list[int]:
+    """GPUs distintas (ordenadas) entre os valores de um `device_map`."""
+    found = {_gpu_index(v) for v in devices}
+    return sorted(i for i in found if i is not None)
+
+
+def model_gpus(model: Any) -> list[int]:
+    """GPUs onde o modelo ficou: `hf_device_map` (accelerate) ou `model.device`."""
+    device_map = getattr(model, "hf_device_map", None)
+    if device_map:
+        return gpu_indices(device_map.values())
+    return gpu_indices([getattr(model, "device", "cpu")])
+
+
+def peak_gpu_mem_gib(
+    indices: Iterable[int], max_allocated: Callable[[int], int] | None = None
+) -> float | None:
+    """Maior pico de memória alocada entre as GPUs `indices`, em GiB (None sem GPU)."""
+    indices = list(indices)
+    if not indices:
+        return None
+    if max_allocated is None:
+        import torch
+
+        max_allocated = torch.cuda.max_memory_allocated
+    return round(max(max_allocated(i) for i in indices) / 2**30, 2)
+
+
+def _reset_peak_memory() -> None:
+    import torch
+
+    if torch.cuda.is_available():
+        for i in range(torch.cuda.device_count()):
+            torch.cuda.reset_peak_memory_stats(i)
+
+
+# --- checkpoint por item (M14) ----------------------------------------------------
+
+
+def read_partial(path: str | Path) -> list[dict[str, Any]]:
+    """Previsões já gravadas em `path` (vazio se não existe); ignora uma linha cortada."""
+    path = Path(path)
+    if not path.is_file():
+        return []
+    out: list[dict[str, Any]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            out.append(json.loads(line))
+        except json.JSONDecodeError:  # a sessão caiu no meio da escrita
+            break
+    return out
+
+
+def done_records(
+    items: list[dict[str, Any]], singles: list[dict[str, Any]], retried: list[dict[str, Any]] | None
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """(single-shot, +retry) já prontos, na ordem dos itens.
+
+    Um item conta como pronto se está no single-shot e, quando há `+retry`
+    (`retried` não é None), também nele.
+    """
+    by_single = {str(p["id"]): p for p in singles}
+    by_retry = {str(p["id"]): p for p in retried or []}
+    s_out: list[dict[str, Any]] = []
+    r_out: list[dict[str, Any]] = []
+    for item in items:
+        item_id = str(item["id"])
+        if item_id not in by_single or (retried is not None and item_id not in by_retry):
+            continue
+        s_out.append(by_single[item_id])
+        if retried is not None:
+            r_out.append(by_retry[item_id])
+    return s_out, r_out
+
+
+def _append(path: Path, record: dict[str, Any]) -> None:
+    with path.open("a", encoding="utf-8", newline="\n") as f:
+        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        f.flush()
 
 
 def _free_cuda() -> None:
@@ -443,12 +621,16 @@ def run_predictions(
     system: str | None = None,
     limit: int | None = None,
     dtype: str = "float16",
-    device: str = "cuda",
+    device: DeviceMap = "cuda",
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS,
     chat_template_kwargs: dict[str, Any] | None = None,
     system_suffix: str = "",
     retry: bool = False,
     db_path: str | Path | None = None,
+    quantization: str | None = None,
+    max_memory: dict[Any, str] | None = None,
+    resume: bool = False,
+    time_budget_s: float | None = None,
     echo: Callable[[str], None] = print,
 ) -> dict[str, Any]:
     """Carrega o modelo, gera as previsões do dataset, grava o JSONL e libera a memória.
@@ -461,6 +643,10 @@ def run_predictions(
     `<sistema>+retry__<split>.jsonl`; o resumo ganha `retry_system`,
     `retry_path` e `retry_summary` (`retry_run_info` monta o run-info desse
     arquivo).
+
+    M14: `quantization`, `device` (device_map) e `max_memory` vão para
+    `load_model`; `resume` pula os itens já gravados; `time_budget_s` para o
+    laço quando o tempo acaba (ver o docstring do módulo).
     """
     from tanque.eval.score import read_jsonl
 
@@ -474,6 +660,8 @@ def run_predictions(
     system = system or system_name(model_id, adapter_id)
     path = output_path(out_dir, system, split, limit)
     executor = None
+    retry_name: str | None = None
+    retry_path: Path | None = None
     if retry:
         from tanque.infer import repair
 
@@ -482,64 +670,138 @@ def run_predictions(
         retry_name = repair.retry_system(system)
         retry_path = output_path(out_dir, retry_name, split, limit)
 
+    # Checkpoint por item: o que já está gravado (resume) fica; o resto é refeito.
+    if resume:
+        prev_single, prev_retry = done_records(
+            items,
+            read_partial(path),
+            read_partial(retry_path) if retry_path is not None else None,
+        )
+    else:
+        prev_single, prev_retry = [], []
+    done_ids = {str(p["id"]) for p in prev_single}
+    todo = [i for i in items if str(i["id"]) not in done_ids]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    write_predictions(path, prev_single)  # descarta linhas cortadas ou de itens incompletos
+    if retry_path is not None:
+        write_predictions(retry_path, prev_retry)
+    if prev_single:
+        echo(f"{system}: {len(prev_single)} itens já prontos (resume), {len(todo)} a fazer")
+
     started = time.time()
-    model, tokenizer = load_model(
-        model_id,
-        adapter_id,
-        dtype=dtype,
-        device=device,
-        revision=revision,
-        adapter_revision=adapter_revision,
-        merge_adapter=merge_adapter,
-    )
+    gpus_used: list[int] = []
+    hardware = str(prev_single[0].get("hardware")) if prev_single else hardware_label(None)
+    system_merged = False
+    load_s = 0.0
+    stopped_reason: str | None = None
+    new_single: list[dict[str, Any]] = []
+    new_retry: list[dict[str, Any]] = []
     adapter_merged = bool(adapter_id) and merge_adapter
-    load_s = round(time.time() - started, 1)
-    hardware = hardware_label(_device_name(device))
-    first_messages = _default_build_prompt(items[0]["question"])
-    first = render_prompt(tokenizer, first_messages, chat_template_kwargs, system_suffix)
-    echo(
-        f"{system}: {len(items)} itens de {dataset_path.name}, {hardware}, {dtype}; "
-        f"system {'junto ao user' if first.system_merged else 'como role system'}; "
-        + (f"adapter {'fundido' if adapter_merged else 'sem fundir'}; " if adapter_id else "")
-        + f"modelo carregado em {load_s} s"
-    )
-    gen = HFGenerator(model, tokenizer, max_new_tokens=max_new_tokens)
-    retried: list[dict[str, Any]] = []
-    try:
-        if executor is None:
-            predictions = predict(
-                items,
-                gen,
-                tokenizer,
-                system=system,
-                hardware=hardware,
-                chat_template_kwargs=chat_template_kwargs,
-                system_suffix=system_suffix,
-                sync=gen.sync,
-                echo=echo,
-            )
-        else:
-            predictions, retried = repair.predict_with_retry(
-                items,
-                chat_generate(gen, tokenizer, chat_template_kwargs, system_suffix),
-                executor,
-                system=system,
-                hardware=hardware,
-                sync=gen.sync,
-                echo=echo,
-            )
-    finally:
-        del gen, model
-        _free_cuda()
+    if todo:
+        if _uses_cuda(device):
+            _reset_peak_memory()
+        model, tokenizer = load_model(
+            model_id,
+            adapter_id,
+            dtype=dtype,
+            device=device,
+            revision=revision,
+            adapter_revision=adapter_revision,
+            merge_adapter=merge_adapter,
+            quantization=quantization,
+            max_memory=max_memory,
+        )
+        load_s = round(time.time() - started, 1)
+        gpus_used = model_gpus(model) if _uses_cuda(device) else []
+        hardware = hardware_label(_device_name(device))
+        first_messages = _default_build_prompt(todo[0]["question"])
+        first = render_prompt(tokenizer, first_messages, chat_template_kwargs, system_suffix)
+        system_merged = first.system_merged
+        echo(
+            f"{system}: {len(todo)} itens de {dataset_path.name}, {hardware}, {dtype}"
+            + (f", {quantization}" if quantization else "")
+            + f", GPUs {gpus_used or '-'}; "
+            f"system {'junto ao user' if first.system_merged else 'como role system'}; "
+            + (f"adapter {'fundido' if adapter_merged else 'sem fundir'}; " if adapter_id else "")
+            + f"modelo carregado em {load_s} s"
+        )
+        gen = HFGenerator(model, tokenizer, max_new_tokens=max_new_tokens)
+        common = {"quantization": quantization, "gpus": len(gpus_used)}
+        total = len(items)
+        try:
+            for n, item in enumerate(todo, start=len(prev_single) + 1):
+                if time_budget_s is not None and time.time() - started > time_budget_s:
+                    stopped_reason = "time_budget"
+                    echo(
+                        f"{system}: limite de tempo ({time_budget_s / 3600:.2f} h) atingido; "
+                        f"parado com {n - 1}/{total} itens"
+                    )
+                    break
+                if executor is None:
+                    single = predict(
+                        [item],
+                        gen,
+                        tokenizer,
+                        system=system,
+                        hardware=hardware,
+                        chat_template_kwargs=chat_template_kwargs,
+                        system_suffix=system_suffix,
+                        sync=gen.sync,
+                    )[0]
+                    retried = None
+                else:
+                    single, retried = repair.predict_item(
+                        item,
+                        chat_generate(gen, tokenizer, chat_template_kwargs, system_suffix),
+                        executor,
+                        system=system,
+                        hardware=hardware,
+                        sync=gen.sync,
+                    )
+                peak = {"peak_gpu_mem_gib": peak_gpu_mem_gib(gpus_used)}
+                single.update(common, **peak)
+                _append(path, single)
+                new_single.append(single)
+                if retried is not None and retry_path is not None:
+                    retried.update(common, **peak)
+                    _append(retry_path, retried)
+                    new_retry.append(retried)
+                if single["error"]:
+                    status = f"erro {single['error'].split(':')[0]}"
+                elif retried is not None:
+                    status = "nova tentativa" if retried["attempts"] == 2 else "1 tentativa"
+                else:
+                    status = f"{single['output_tokens']} tokens"
+                latency = (retried or single)["latency_ms"]
+                echo(f"[{n}/{total}] {item['id']}: {status}, {latency} ms")
+        finally:
+            del gen, model
+            final_peak = peak_gpu_mem_gib(gpus_used)
+            _free_cuda()
+    else:
+        final_peak = None
+        echo(f"{system}: todos os {len(items)} itens já estavam prontos; modelo não carregado")
+
+    # Pico da execução inteira em todas as linhas (as de uma sessão anterior guardam o delas).
+    old_peaks = [p.get("peak_gpu_mem_gib") for p in prev_single + prev_retry]
+    peaks = [v for v in [final_peak, *old_peaks] if v is not None]
+    run_peak = max(peaks) if peaks else None
+    run_gpus = len(gpus_used) if todo else int(prev_single[0].get("gpus") or 0)
+    predictions = prev_single + new_single
+    for p in predictions:
+        p.update(quantization=quantization, gpus=run_gpus, peak_gpu_mem_gib=run_peak)
     write_predictions(path, predictions)
     summary = summarize(predictions, max_new_tokens=max_new_tokens)
     retry_info: dict[str, Any] = {}
-    if executor is not None:
-        write_predictions(retry_path, retried)
+    if executor is not None and retry_path is not None:
+        retried_all = prev_retry + new_retry
+        for p in retried_all:
+            p.update(quantization=quantization, gpus=run_gpus, peak_gpu_mem_gib=run_peak)
+        write_predictions(retry_path, retried_all)
         retry_info = {
             "retry_system": retry_name,
             "retry_path": str(retry_path),
-            "retry_summary": retry_summary(retried),
+            "retry_summary": retry_summary(retried_all),
         }
         echo(f"{retry_name}: {retry_info['retry_summary']} -> {retry_path}")
     model_revision, revision_error = _resolved_revision(model_id, revision)
@@ -563,14 +825,25 @@ def run_predictions(
         "adapter_revision_error": adapter_error,
         "adapter_merged": adapter_merged,
         "dtype": dtype,
+        "quantization": quantization,
+        "device_map": device,
+        "max_memory": {str(k): v for k, v in max_memory.items()} if max_memory else None,
+        "gpus": run_gpus,
+        "gpu_indices": gpus_used,
+        "peak_gpu_mem_gib": run_peak,
         "hardware": hardware,
         "max_new_tokens": max_new_tokens,
         "chat_template_kwargs": dict(chat_template_kwargs or {}),
         "system_suffix": system_suffix,
-        "system_merged_into_user": first.system_merged,
+        "system_merged_into_user": system_merged,
         "retry": retry,
         "db_path": str(db_path) if db_path is not None else None,
         "limit": limit,
+        "n_items": len(items),
+        "completed": len(predictions),
+        "resumed": len(prev_single),
+        "time_budget_s": time_budget_s,
+        "stopped_reason": stopped_reason,
         "load_s": load_s,
         "total_s": round(time.time() - started, 1),
         "versions": _versions(),

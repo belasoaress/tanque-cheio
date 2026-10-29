@@ -301,6 +301,12 @@ budget_usd = 10.0
 # Cloud, lida em 2026-10-29: US$ 0,35 por GPU por hora (compromisso de 1 ano: 0,22;
 # 3 anos: 0,16). É SÓ a GPU: a página diz que cada GPU soma ao custo do tipo de máquina
 # (vCPU e memória da VM não entram), então a estimativa é um piso.
+#
+# v2 (M14, D35): o preço é POR GPU. Uma execução em N GPUs custa
+#   US$/1.000 = latência média (ms) × 1.000 / 3.600.000 × gpus × gpu_hour_usd
+# com `gpus` lido de cada previsão (5.3 v2) ou do run-info. O 32B roda em 2 T4:
+# 2 × 0,35 = US$ 0,70/h, o mesmo valor da D35 e da mesma fonte; por isso não há uma
+# entrada separada para 2 GPUs. Previsões sem `gpus` (v1) contam como 1 GPU.
 gpu_hour_usd = 0.35
 gpu = "NVIDIA T4 (1 GPU), Google Compute Engine sob demanda, us-central1"
 includes_vm = false

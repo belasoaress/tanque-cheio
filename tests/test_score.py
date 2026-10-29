@@ -262,6 +262,23 @@ def test_percentiles_and_cost(
     assert m["hardware"] == ["cpu"]
 
 
+def test_gpus_and_peak_memory_only_when_present(
+    tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_write_jsonl
+) -> None:
+    plain = m2_write_jsonl(tmp_path / "a.jsonl", [prediction(i) for i in m2_toy_items])
+    m = score.score(m2_dataset, plain, db_path=m2_toy_db).metrics
+    assert "gpus" not in m and "peak_gpu_mem_gib" not in m  # métricas da v1 não mudam
+    rows = [
+        {**prediction(i), "gpus": 2, "peak_gpu_mem_gib": g}
+        for i, g in zip(m2_toy_items, [18.5, 19.25, 18.0, 19.0], strict=True)
+    ]
+    m = score.score(
+        m2_dataset, m2_write_jsonl(tmp_path / "b.jsonl", rows), db_path=m2_toy_db
+    ).metrics
+    assert m["gpus"] == 2
+    assert m["peak_gpu_mem_gib"] == 19.25
+
+
 def test_percentile_helper() -> None:
     assert score.percentile([5], 95) == 5
     assert score.percentile([1, 2, 3, 4, 5], 50) == 3
