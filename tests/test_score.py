@@ -53,10 +53,13 @@ def test_predictions_equal_to_gold_give_ex_one(m2_toy_db, m2_dataset, gold_predi
     assert m["blocked_rate"] == 0.0
     assert m["n_missing"] == 0
     assert m["ex_by_difficulty"] == {
-        "facil": {"n": 2, "ex": 1.0},
-        "medio": {"n": 1, "ex": 1.0},
-        "dificil": {"n": 1, "ex": 1.0},
+        "facil": {"n": 2, "ex": 1.0, "ex_relaxed": 1.0},
+        "medio": {"n": 1, "ex": 1.0, "ex_relaxed": 1.0},
+        "dificil": {"n": 1, "ex": 1.0, "ex_relaxed": 1.0},
     }
+    assert m["ex_relaxed"] == 1.0
+    assert m["ex_ci95"] == [1.0, 1.0]
+    assert m["ex_relaxed_ci95"] == [1.0, 1.0]
 
 
 def test_mixed_predictions(tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_write_jsonl) -> None:
@@ -77,11 +80,146 @@ def test_mixed_predictions(tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_wri
     assert m["ex"] == 0.25
     assert m["valid_sql_rate"] == 0.5  # facil2 e medio executaram
     assert m["blocked_rate"] == 0.25
-    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5}
-    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0}
-    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0}
+    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5, "ex_relaxed": 0.5}
+    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert m["ex_relaxed"] == 0.25
+    lo, hi = m["ex_ci95"]
+    assert 0.0 <= lo <= 0.25 <= hi <= 1.0
     assert m["latency_ms"] == {"p50": 200.0, "p95": 290.0, "mean": 200.0}
     assert m["cost_per_1k_usd"] == pytest.approx(0.5)  # 0.002 / 4 itens * 1000
+
+
+def test_relaxed_ex_accepts_extra_columns(
+    tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_write_jsonl
+) -> None:
+    facil1, facil2, medio, dificil = m2_toy_items
+    rows = [
+        prediction(facil1),
+        # coluna a mais (o mínimo junto da contagem): errado na rígida, certo na tolerante
+        prediction(
+            facil2, "SELECT MIN(valor_venda), COUNT(*), produto FROM coletas GROUP BY produto"
+        ),
+        # coluna a mais e a ordem certa
+        prediction(medio, medio["sql"].replace("SELECT m.uf,", "SELECT m.uf, COUNT(*),")),
+        # coluna faltando: errado nas duas
+        prediction(dificil, "SELECT 1"),
+    ]
+    preds = m2_write_jsonl(tmp_path / "p.jsonl", rows)
+    result = score.score(m2_dataset, preds, db_path=m2_toy_db)
+    m = result.metrics
+    assert m["ex"] == 0.25
+    assert m["ex_relaxed"] == 0.75
+    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5, "ex_relaxed": 1.0}
+    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0, "ex_relaxed": 1.0}
+    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert [r.correct_relaxed for r in result.items] == [True, True, True, False]
+    assert all(r.correct_relaxed for r in result.items if r.correct)
+    assert m["ex_relaxed_ci95"][0] <= 0.75 <= m["ex_relaxed_ci95"][1]
+
+
+def test_paired_comparisons_cover_every_pair_in_a_split() -> None:
+    def fake(system: str, split: str, flags: list[bool]) -> score.ScoreResult:
+        items = [
+            score.ItemResult(f"i{k}", "facil", True, f, True, False, None, f)
+            for k, f in enumerate(flags)
+        ]
+        return score.ScoreResult(system, split, {}, items)
+
+    results = [
+        fake("ft-m", "test", [True, True, True, True, False]),
+        fake("base-m", "test", [False, False, True, False, False]),
+        fake("claude-x", "test", [True, True, True, True, True]),
+        fake("base-m", "dev", [True, False]),
+    ]
+    out = score.paired_comparisons(results)
+    assert [(c["split"], c["a"], c["b"]) for c in out] == [
+        ("test", "base-m", "ft-m"),
+        ("test", "base-m", "claude-x"),
+        ("test", "ft-m", "claude-x"),
+    ]
+    assert out[0] == {
+        "a": "base-m",
+        "b": "ft-m",
+        "split": "test",
+        "n": 5,
+        "a_only": 0,
+        "b_only": 3,
+        "delta_ex": 0.6,
+        "mcnemar_p": 0.25,
+    }
+    with pytest.raises(PredictionsError):
+        score.paired_comparisons(
+            [fake("base-m", "dev", [True]), fake("ft-m", "dev", [True, False])]
+        )
+
+
+def test_paired_comparisons_with_retry_files() -> None:
+    def fake(system: str, flags: list[bool]) -> score.ScoreResult:
+        items = [
+            score.ItemResult(f"i{k}", "facil", True, f, True, False, None, f)
+            for k, f in enumerate(flags)
+        ]
+        return score.ScoreResult(system, "test", {}, items)
+
+    results = [
+        fake("ft-m+retry", [True, True, True, True]),
+        fake("base-m+retry", [True, False, False, False]),
+        fake("ft-m", [True, True, False, False]),
+        fake("base-m", [False, False, False, False]),
+    ]
+    pairs = [(c["a"], c["b"]) for c in score.paired_comparisons(results)]
+    # todos os pares single-shot e cada <s> × <s>+retry; nada entre dois +retry
+    assert pairs == [
+        ("base-m", "base-m+retry"),
+        ("base-m", "ft-m"),
+        ("ft-m", "ft-m+retry"),
+    ]
+
+
+def test_system_sort_key_orders_by_prefix_family_size_and_retry() -> None:
+    systems = [
+        "claude-x",
+        "ft2-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-32b-instruct",
+        "base-qwen2.5-coder-7b-instruct+retry",
+        "outro",
+        "base-qwen2.5-coder-14b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct+retry",
+        "base-qwen2.5-coder-7b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-1.5b-instruct",
+    ]
+    assert sorted(systems, key=score.system_sort_key) == [
+        "base-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-7b-instruct",
+        "base-qwen2.5-coder-7b-instruct+retry",
+        "base-qwen2.5-coder-14b-instruct",
+        "base-qwen2.5-coder-32b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct+retry",
+        "ft2-qwen2.5-coder-1.5b-instruct",
+        "claude-x",
+        "outro",
+    ]
+
+
+def test_committed_predictions_include_dev2_and_retry(tmp_path) -> None:
+    for name in ("a__dev.jsonl", "a__dev2.jsonl", "a+retry__dev2.jsonl", "a__test.jsonl"):
+        (tmp_path / name).write_text("", encoding="utf-8")
+    (tmp_path / "a__dev-sample2.jsonl").write_text("", encoding="utf-8")
+    found = [(split, p.name) for split, p in score.committed_predictions(tmp_path)]
+    assert found == [
+        ("dev", "a__dev.jsonl"),
+        ("dev2", "a+retry__dev2.jsonl"),
+        ("dev2", "a__dev2.jsonl"),
+        ("test", "a__test.jsonl"),
+    ]
+
+
+def test_system_metrics_drops_comparisons() -> None:
+    data = {"base-m": {"dev": {}}, "comparisons": []}
+    assert score.system_metrics(data) == {"base-m": {"dev": {}}}
 
 
 def test_generation_error_counts_as_invalid(

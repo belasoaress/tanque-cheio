@@ -203,6 +203,144 @@ def test_third_system_enters_by_itself():
     assert "inclui a rede" in text and "D24" not in text
 
 
+def test_main_table_shows_relaxed_ex_and_confidence_intervals():
+    ft = {
+        **metric(0.7, 3000.0, 3600.0),
+        "ex_ci95": [0.6267, 0.7733],
+        "ex_relaxed": 0.82,
+        "ex_relaxed_ci95": [0.7533, 0.88],
+    }
+    text = report.render({**FAKE, "ft-m": {**FAKE["ft-m"], "test": ft}}, report.ReportContext())
+    header = next(line for line in text.splitlines() if line.startswith("| Sistema"))
+    assert "| EX | IC 95% EX | EX tolerante | IC 95% tolerante | EX fácil |" in header
+    assert "| `ft-m` | test | 150 | 70,0% | 62,7–77,3% | 82,0% | 75,3–88,0% | 90,0% |" in text
+    # métricas antigas, sem os campos novos: traço, sem quebrar
+    assert "| `base-m` | test | 150 | 10,0% | — | — | — | 30,0% |" in text
+    comparison = text.split("## Base → ajustado", 1)[1].split("##", 1)[0]
+    assert "| EX tolerante | — | 82,0% | — |" in comparison
+
+
+def test_paired_comparisons_table_and_method_note():
+    metrics = {
+        **FAKE,
+        "comparisons": [
+            {
+                "a": "base-m",
+                "b": "ft-m",
+                "split": "test",
+                "n": 150,
+                "a_only": 2,
+                "b_only": 92,
+                "delta_ex": 0.6,
+                "mcnemar_p": 2.4e-25,
+            },
+            {
+                "a": "base-m",
+                "b": "ft-m",
+                "split": "dev",
+                "n": 50,
+                "a_only": 3,
+                "b_only": 6,
+                "delta_ex": 0.06,
+                "mcnemar_p": 0.5078,
+            },
+        ],
+    }
+    text = report.render(metrics, report.ReportContext())
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
+    assert "| A | B | N | EX A | EX B | Δ EX (B − A) | Só A | Só B | p (McNemar) |" in paired
+    assert "| `base-m` | `ft-m` | 150 | 10,0% | 70,0% | +60,0 p.p. | 2 | 92 | < 0,001 |" in paired
+    dev = text.split("## Referência: dev", 1)[1]
+    assert "| `base-m` | `ft-m` | 50 | — | 74,0% | +6,0 p.p. | 3 | 6 | 0,508 |" in dev
+    note = text.split("## Nota de método", 1)[1]
+    assert "**EX tolerante (secundária, D28" in note
+    assert "10.000 reamostragens" in note and "seed 42" in note
+    assert "McNemar exato" in note
+    # a chave `comparisons` não vira sistema nem split
+    assert "`comparisons`" not in text.split("## Nota de método", 1)[0]
+
+
+def test_retry_rows_ft2_large_models_and_dev2_section():
+    metrics = {
+        "base-qwen2.5-coder-1.5b-instruct": {"test": metric(0.1, 2800.0, 3000.0)},
+        "base-qwen2.5-coder-32b-instruct": {"test": metric(0.6, 9000.0, 9000.0)},
+        "base-qwen2.5-coder-7b-instruct": {"test": metric(0.4, 5000.0, 5000.0)},
+        "ft-qwen2.5-coder-1.5b-instruct": {
+            "test": metric(0.7, 3000.0, 3600.0),
+            "dev2": metric(0.6, 3000.0, 3000.0, n=113),
+        },
+        "ft-qwen2.5-coder-1.5b-instruct+retry": {
+            "test": metric(0.75, 3100.0, 3700.0),
+            "dev2": metric(0.65, 3100.0, 3100.0, n=113),
+        },
+        "ft2-qwen2.5-coder-1.5b-instruct": {"test": metric(0.8, 3000.0, 3600.0)},
+        "comparisons": [
+            {
+                "a": "ft-qwen2.5-coder-1.5b-instruct",
+                "b": "ft-qwen2.5-coder-1.5b-instruct+retry",
+                "split": "test",
+                "n": 150,
+                "a_only": 0,
+                "b_only": 8,
+                "delta_ex": 0.05,
+                "mcnemar_p": 0.0078,
+            },
+            {
+                "a": "ft-qwen2.5-coder-1.5b-instruct",
+                "b": "ft-qwen2.5-coder-1.5b-instruct+retry",
+                "split": "dev2",
+                "n": 113,
+                "a_only": 0,
+                "b_only": 6,
+                "delta_ex": 0.05,
+                "mcnemar_p": 0.0312,
+            },
+        ],
+    }
+    text = report.render(metrics, report.ReportContext())
+    main = text.split("## Tabela principal", 1)[1].split("##", 1)[0]
+    rows = [line.split("`")[1] for line in main.splitlines() if line.startswith("| `")]
+    assert rows == [
+        "base-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-7b-instruct",
+        "base-qwen2.5-coder-32b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct+retry",
+        "ft2-qwen2.5-coder-1.5b-instruct",
+    ]
+    comparison = text.split("## Base → ajustado", 1)[1].split("## Comparações", 1)[0]
+    assert "`base-qwen2.5-coder-1.5b-instruct` → `ft2-qwen2.5-coder-1.5b-instruct`" in comparison
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
+    assert "| 70,0% | 75,0% | +5,0 p.p. | 0 | 8 | 0,008 |" in paired
+    dev2 = text.split("## Referência: dev2 (113 perguntas)", 1)[1].split("## Nota", 1)[0]
+    assert "| `ft-qwen2.5-coder-1.5b-instruct+retry` | dev2 | 113 | 65,0%" in dev2
+    assert "Comparações pareadas no dev2:" in dev2 and "| 0,031 |" in dev2
+    assert "## Split `dev2`" not in text
+    assert "**Nova tentativa (D32):**" in text
+
+
+def test_final_system_defaults_to_best_single_shot_ft():
+    metrics = {
+        "ft-a": {"test": {"ex": 0.7}},
+        "ft-a+retry": {"test": {"ex": 0.9}},
+        "ft2-a": {"test": {"ex": 0.8}},
+        "ft-b": {"test": {"ex": 0.8}},
+    }
+    candidates = ["ft-a", "ft-a+retry", "ft-b", "ft2-a"]
+    # empate entre ft-b e ft2-a: vale a ordem dos sistemas (ft antes de ft2); +retry fora
+    assert report.final_system(metrics, candidates) == "ft-b"
+    assert report.final_system(metrics, candidates, "ft-a") == "ft-a"
+    assert report.final_system(metrics, ["ft-a+retry"]) is None
+    with pytest.raises(report.ReportInputError):
+        report.final_system(metrics, candidates, "ft-a+retry")
+
+
+def test_paired_table_pending_without_comparisons():
+    text = report.render(FAKE, report.ReportContext())
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
+    assert "_Pendente: precisa de 2 sistemas pontuados no teste" in paired
+
+
 def test_render_without_test_metrics_says_pending():
     text = report.render({"base-m": {"dev": metric(0.1, 1.0, 1.0, n=50)}})
     assert "_Previsões do teste ainda não pontuadas" in text
@@ -280,7 +418,21 @@ def test_check_metrics_write_then_check_then_detect_drift(workspace):
     result = _cli("check-metrics", *common, "--write")
     assert result.exit_code == 0, result.output
     data = json.loads(metrics.read_text(encoding="utf-8"))
-    assert set(data) == {"base-brinquedo", "ft-brinquedo"}
+    assert set(data) == {"base-brinquedo", "ft-brinquedo", "comparisons"}
+    assert data["comparisons"] == [
+        {
+            "a": "base-brinquedo",
+            "b": "ft-brinquedo",
+            "split": "test",
+            "n": 4,
+            "a_only": 0,
+            "b_only": 0,
+            "delta_ex": 0.0,
+            "mcnemar_p": 1.0,
+        }
+    ]
+    assert data["ft-brinquedo"]["test"]["ex_relaxed"] == 0.0
+    assert data["ft-brinquedo"]["test"]["ex_ci95"] == [0.0, 0.0]
     assert set(data["base-brinquedo"]) == {"dev", "test"}
     assert data["base-brinquedo"]["dev"]["ex"] == 1.0
     assert data["ft-brinquedo"]["test"]["ex"] == 0.0
@@ -291,11 +443,13 @@ def test_check_metrics_write_then_check_then_detect_drift(workspace):
 
     data["ft-brinquedo"]["test"]["ex"] = 0.5
     data["fantasma"] = {"dev": {}}
+    data["comparisons"][0]["mcnemar_p"] = 0.5
     metrics.write_text(score.dump_json(data), encoding="utf-8")
     result = _cli("check-metrics", *common)
     assert result.exit_code == 1
     assert "ft-brinquedo.test.ex" in result.output
     assert "fantasma: está em metrics.json, mas não foi recalculado" in result.output
+    assert "comparisons" in result.output
 
 
 def test_check_metrics_rejects_a_file_named_after_another_system(workspace):
@@ -347,11 +501,49 @@ def test_report_command_classifies_ft_errors_and_check_detects_edits(workspace):
     assert "Nota: tabela inventada" in section
     assert "SELECT * FROM nao_existe" in section
     assert "`base-brinquedo` → `ft-brinquedo`" in text
+    assert "Modelo final: `ft-brinquedo` (o `ft*` sem nova tentativa de maior EX" in text
 
     assert _cli(*args, "--check").exit_code == 0
     out.write_text(text.replace("4 erros", "3 erros"), encoding="utf-8")
     result = _cli(*args, "--check")
     assert result.exit_code == 1 and "desatualizado" in result.output
+
+
+def test_retry_files_do_not_duplicate_error_examples(workspace):
+    root, db = workspace
+    results = root / "results"
+    preds = results / "predictions"
+    rows = [
+        {**json.loads(line), "system": "ft-brinquedo+retry"}
+        for line in (preds / "ft-brinquedo__test.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    (preds / "ft-brinquedo+retry__test.jsonl").write_text(
+        "".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8"
+    )
+    paths = (
+        "--metrics",
+        results / "metrics.json",
+        "--predictions-dir",
+        preds,
+        "--datasets-dir",
+        root / "datasets",
+    )
+    result = _cli("check-metrics", "--db", db, *paths, "--write")
+    assert result.exit_code == 0, result.output
+    data = json.loads((results / "metrics.json").read_text(encoding="utf-8"))
+    pairs = [(c["split"], c["a"], c["b"]) for c in data["comparisons"]]
+    assert pairs == [
+        ("test", "base-brinquedo", "ft-brinquedo"),
+        ("test", "ft-brinquedo", "ft-brinquedo+retry"),
+    ]
+    out = results / "report.md"
+    result = _cli("report", "--db", db, *paths, "--out", out)
+    assert result.exit_code == 0, result.output
+    text = out.read_text(encoding="utf-8")
+    assert text.count("### `ft-brinquedo") == 1
+    assert "| `ft-brinquedo+retry` | test |" in text
+    result = _cli("report", "--db", db, *paths, "--out", out, "--final-system", "nao-existe")
+    assert result.exit_code == 2 and "modelo final" in result.output
 
 
 def test_report_needs_the_database_only_for_ft_test_predictions(workspace, tmp_path):
