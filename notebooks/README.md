@@ -5,6 +5,7 @@
 | `01_bakeoff.ipynb` | `belasoares/tanque-cheio-bakeoff` (`kaggle/bakeoff/`) | Previsões dos candidatos aprovados no dev (M5) |
 | `03_predict.ipynb` | `belasoares/tanque-cheio-predict` (`kaggle/predict/`) | Previsões de um modelo (com adapter opcional) em `dev` ou `test` (M5–M7) |
 | `02_finetune.ipynb` | `belasoares/tanque-cheio-finetune` (`kaggle/finetune/`) | QLoRA do modelo base + previsões do adapter no dev (M6) |
+| `04_test_predict.ipynb` | `belasoares/tanque-cheio-test-predict` (`kaggle/test-predict/`) | Previsões finais no teste: base e base + adapter fundido, na mesma sessão (M7) |
 
 Os notebooks instalam o pacote com
 `pip install "tanque @ git+https://github.com/belasoaress/tanque-cheio@<REPO_REF>"`,
@@ -161,3 +162,86 @@ Hiperparâmetros, estimativa de tempo e o registro de cada rodada: `results/trai
 9. **Tornar o notebook público** (com aprovação): na página do kernel, *Settings →
    Sharing → Public*, ou `"is_private": false` em `kaggle/finetune/kernel-metadata.json` e
    novo push.
+
+## Teste final (M7): `04_test_predict.ipynb`
+
+Roda os **2 sistemas do relatório final** (D24) no `datasets/test.jsonl`, numa única
+sessão e na mesma T4: `base-qwen2.5-coder-1.5b-instruct` e
+`ft-qwen2.5-coder-1.5b-instruct` (o mesmo base + o adapter do HF, **fundido** antes de
+gerar, para a latência ser justa). Decodificação gulosa, `max_new_tokens = 256`, fp16. O
+checkpoint do base e o adapter ficam fixados por commit na 1ª célula (`MODEL_REVISION`,
+o mesmo do M6, e `ADAPTER_REVISION`).
+
+Por que um notebook novo, e não o `03_predict`: o 03 roda um modelo num split; aqui os dois
+sistemas precisam sair da mesma sessão, com o mesmo hardware, as mesmas versões e o
+checkpoint e o adapter fixados. Juntar isso no 03 encheria a célula de parâmetros de
+casos especiais, e o teste roda uma vez só.
+
+Saída (`/kaggle/working/`): `base-qwen2.5-coder-1.5b-instruct__test.jsonl`,
+`ft-qwen2.5-coder-1.5b-instruct__test.jsonl` (150 linhas cada, formato 5.3) e um
+`run-info__<sistema>__test.json` para cada um (`adapter_merged: true` no ft). Tempo
+estimado: 15 a 25 min de GPU.
+
+> **Regra 5:** executar no Kaggle exige a aprovação da Isabela. Os passos abaixo (👤) são
+> para ela, no PowerShell, na raiz do repositório, com a `main` atualizada
+> (`git pull`).
+
+**(a) Publicar o adapter no HF: ✅ feito em 29/10/2026.** O repo
+[`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora)
+está público (commit `bd8079f…`, o `ADAPTER_REVISION` do notebook). Para referência, ou
+para publicar de novo a partir da pasta `kaggle-ft/adapter` baixada no M6:
+
+```powershell
+uv run hf auth login        # cole um token com permissão de escrita (huggingface.co/settings/tokens)
+uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora kaggle-ft/adapter . --no-private --commit-message "Adapter LoRA do M6"
+```
+
+`--no-private` só vale quando o `hf upload` cria o repo; num repo que já existe, a
+visibilidade se muda em *Settings* no HF. Se publicar uma versão nova do adapter, troque
+`ADAPTER_REVISION` na 1ª célula do `04_test_predict.ipynb` pelo commit novo (ou `None`).
+
+**(b) Rodar o notebook do teste no Kaggle** (cria o kernel privado
+`belasoares/tanque-cheio-test-predict` na primeira vez):
+
+```powershell
+# (opcional) ensaio: LIMIT = 3 na 1ª célula, push, conferir, voltar para LIMIT = None
+kaggle kernels push -p notebooks/kaggle/test-predict
+kaggle kernels status belasoares/tanque-cheio-test-predict   # repita até COMPLETE
+```
+
+Pela interface web: importe `notebooks/04_test_predict.ipynb`, **Accelerator → GPU T4**,
+**Internet → On**, *Save Version → Save & Run All*. Se o status for `ERROR`, o log vem
+junto no passo (c) (arquivo `.log`).
+
+**(c) Baixar, pontuar e commitar as previsões:**
+
+```powershell
+kaggle kernels output belasoares/tanque-cheio-test-predict -p kaggle-test -o
+Copy-Item kaggle-test/*__test.jsonl, kaggle-test/run-info__*__test.json results/predictions/
+
+# banco a partir do snapshot versionado (se ainda não tiver data/tanque.duckdb)
+uv run tanque data build --from-parquet snapshot/coletas-2026-09.parquet
+
+uv run tanque eval score datasets/test.jsonl results/predictions/base-qwen2.5-coder-1.5b-instruct__test.jsonl
+uv run tanque eval score datasets/test.jsonl results/predictions/ft-qwen2.5-coder-1.5b-instruct__test.jsonl
+uv run tanque eval check-metrics   # o mesmo que o CI confere
+uv run tanque eval report          # gera results/report.md (tabelas, base → ft, 10 erros)
+uv run pytest -q
+
+git switch -c m7-test-predictions
+git add results/predictions/*__test.jsonl results/predictions/run-info__*__test.json results/metrics.json results/report.md
+git commit -m "chore(results): previsões do teste e relatório final (M7)"
+git push -u origin m7-test-predictions   # e abra o PR
+```
+
+Não commite a pasta `kaggle-test/`. Opcional: revisar a classificação dos 10 erros no
+`results/report.md` e corrigir à mão em `results/error-annotations.json` (ex.:
+`"test-0042": {"type": "join", "note": "passou por postos.uf"}`), depois rodar de novo
+`uv run tanque eval report` e commitar os dois arquivos.
+
+**(d) Tornar público o notebook do fine-tuning (R9):** na página do kernel
+`belasoares/tanque-cheio-finetune` no Kaggle, *Settings → Sharing → Public*. Use a
+interface web: um `kaggle kernels push` com `"is_private": false` criaria uma versão
+nova e treinaria tudo de novo (~3,5 h de GPU). Depois, cole o link em
+`results/training.md` ("Escolha final"). O `tanque-cheio-test-predict` pode ficar público
+do mesmo jeito, se quiser.
