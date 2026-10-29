@@ -44,3 +44,39 @@ jobs:
 
       - name: CLI
         run: uv run tanque --help
+
+  # Regressão das métricas (M7, R11): reconstrói o banco a partir do snapshot versionado
+  # (D25, sem download; ~10 s, por isso sem cache), confere as SQLs de referência e
+  # recalcula as métricas de todas as previsões commitadas.
+  regression:
+    name: regression (snapshot + metrics)
+    runs-on: ubuntu-latest
+    env:
+      UV_PYTHON: "3.11"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Build database from snapshot
+        run: uv run tanque data build --from-parquet snapshot/coletas-2026-09.parquet
+
+      - name: Verify gold (dev)
+        run: uv run tanque eval verify-gold datasets/dev.jsonl
+
+      - name: Verify gold (test)
+        run: uv run tanque eval verify-gold datasets/test.jsonl
+
+      - name: Recompute metrics
+        run: uv run tanque eval check-metrics
+
+      - name: Report is up to date
+        run: uv run tanque eval report --check
+
+      - name: Tests with the real database
+        run: uv run pytest -q tests/test_data_build.py tests/test_report.py
