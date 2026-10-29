@@ -37,8 +37,8 @@
 - O dev2 inclui os 50 perguntas do dev da v1, que serviram para escolher o modelo e
   conferir o fine-tuning. Isso pode favorecer o ajustado em alguns pontos. O teste (M17)
   é a comparação limpa.
-- O dev2 ainda está em revisão humana (M13): os 63 itens novos podem ter descartes, e os
-  números serão recalculados depois.
+- O dev2 foi revisado por inteiro pela Isabela (M13), sem descartes: os números acima
+  valem como estão.
 
 ## Configuração (fixada antes de ver os resultados)
 
