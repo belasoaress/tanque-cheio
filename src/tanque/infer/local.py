@@ -26,7 +26,8 @@ Decisões:
   `repetition_penalty=1.0`, passados como argumentos de `generate` (prioridade
   máxima no transformers 4.x e 5.x), para ignorar os padrões de amostragem do
   `generation_config.json` do checkpoint (ex.: Qwen2.5 traz
-  `repetition_penalty=1.05`). `max_new_tokens=256`.
+  `repetition_penalty=1.05`). `max_new_tokens=384` por padrão na v2 (D31; na
+  v1 era 256), configurável e registrado no run-info.
 - **Latência:** por item, do template à decodificação, com
   `torch.cuda.synchronize()` antes e depois (`sync`). Lote de 1 pergunta.
 - **Tokens:** `input_tokens` = tamanho do prompt tokenizado; `output_tokens` =
@@ -47,6 +48,16 @@ Decisões:
   Testado em CPU (`tests/test_infer_local_hf.py`, `tests/test_train_smoke.py`).
 - **Erros:** exceção num item (ex.: falta de memória) vira previsão com
   `error` e o laço continua.
+- **Autocorreção (v2, D32):** `run_predictions(..., retry=True)` usa
+  `tanque.infer.repair`: executa cada SQL no banco (guardrail +
+  `execute.run`) e, se ela foi bloqueada ou deu erro, gera 1 nova tentativa
+  com `prompting.build_repair_prompt`. Numa só execução grava
+  `<sistema>__<split>.jsonl` (single-shot, igual ao sem `retry`) e
+  `<sistema>+retry__<split>.jsonl` (5.3 v2). O banco vem do snapshot: no
+  Kaggle, o notebook roda antes `tanque data build --from-parquet
+  snapshot/coletas-2026-09.parquet` (~6 s), que grava `data/tanque.duckdb`, o
+  `db_path` padrão. Sem o banco, `run_predictions` falha antes de carregar o
+  modelo.
 """
 
 from __future__ import annotations
@@ -59,7 +70,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-DEFAULT_MAX_NEW_TOKENS = 256
+DEFAULT_MAX_NEW_TOKENS = 384  # D31 (v1: 256)
 COST_USD = 0.0
 SYSTEM_SEPARATOR = "\n\n"
 
@@ -436,12 +447,20 @@ def run_predictions(
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS,
     chat_template_kwargs: dict[str, Any] | None = None,
     system_suffix: str = "",
+    retry: bool = False,
+    db_path: str | Path | None = None,
     echo: Callable[[str], None] = print,
 ) -> dict[str, Any]:
     """Carrega o modelo, gera as previsões do dataset, grava o JSONL e libera a memória.
 
     Devolve um resumo da execução (arquivo, contagens, versões, commit do
     checkpoint), que os notebooks imprimem e gravam em `run-info__<...>.json`.
+
+    Com `retry=True` (D32), executa cada SQL no banco `db_path` (padrão:
+    `data/tanque.duckdb`, montado do snapshot) e grava também
+    `<sistema>+retry__<split>.jsonl`; o resumo ganha `retry_system`,
+    `retry_path` e `retry_summary` (`retry_run_info` monta o run-info desse
+    arquivo).
     """
     from tanque.eval.score import read_jsonl
 
@@ -454,6 +473,14 @@ def run_predictions(
         raise ValueError(f"dataset vazio: {dataset_path}")
     system = system or system_name(model_id, adapter_id)
     path = output_path(out_dir, system, split, limit)
+    executor = None
+    if retry:
+        from tanque.infer import repair
+
+        # Antes de carregar o modelo: sem banco, falha em segundos, não em minutos.
+        executor = repair.make_executor(db_path)
+        retry_name = repair.retry_system(system)
+        retry_path = output_path(out_dir, retry_name, split, limit)
 
     started = time.time()
     model, tokenizer = load_model(
@@ -477,23 +504,44 @@ def run_predictions(
         + f"modelo carregado em {load_s} s"
     )
     gen = HFGenerator(model, tokenizer, max_new_tokens=max_new_tokens)
+    retried: list[dict[str, Any]] = []
     try:
-        predictions = predict(
-            items,
-            gen,
-            tokenizer,
-            system=system,
-            hardware=hardware,
-            chat_template_kwargs=chat_template_kwargs,
-            system_suffix=system_suffix,
-            sync=gen.sync,
-            echo=echo,
-        )
+        if executor is None:
+            predictions = predict(
+                items,
+                gen,
+                tokenizer,
+                system=system,
+                hardware=hardware,
+                chat_template_kwargs=chat_template_kwargs,
+                system_suffix=system_suffix,
+                sync=gen.sync,
+                echo=echo,
+            )
+        else:
+            predictions, retried = repair.predict_with_retry(
+                items,
+                chat_generate(gen, tokenizer, chat_template_kwargs, system_suffix),
+                executor,
+                system=system,
+                hardware=hardware,
+                sync=gen.sync,
+                echo=echo,
+            )
     finally:
         del gen, model
         _free_cuda()
     write_predictions(path, predictions)
     summary = summarize(predictions, max_new_tokens=max_new_tokens)
+    retry_info: dict[str, Any] = {}
+    if executor is not None:
+        write_predictions(retry_path, retried)
+        retry_info = {
+            "retry_system": retry_name,
+            "retry_path": str(retry_path),
+            "retry_summary": retry_summary(retried),
+        }
+        echo(f"{retry_name}: {retry_info['retry_summary']} -> {retry_path}")
     model_revision, revision_error = _resolved_revision(model_id, revision)
     if revision_error:
         echo(f"Aviso: commit do checkpoint não resolvido ({revision_error})")
@@ -520,9 +568,56 @@ def run_predictions(
         "chat_template_kwargs": dict(chat_template_kwargs or {}),
         "system_suffix": system_suffix,
         "system_merged_into_user": first.system_merged,
+        "retry": retry,
+        "db_path": str(db_path) if db_path is not None else None,
         "limit": limit,
         "load_s": load_s,
         "total_s": round(time.time() - started, 1),
         "versions": _versions(),
         "summary": summary,
+        **retry_info,
     }
+
+
+def chat_generate(
+    generator: Any,
+    tokenizer: Any,
+    chat_template_kwargs: dict[str, Any] | None = None,
+    system_suffix: str = "",
+) -> Callable[[list[dict]], Generation]:
+    """Gerador "mensagens -> geração" para `repair`: chat template + `generator.generate`."""
+
+    def generate(messages: list[dict]) -> Generation:
+        rendered = render_prompt(tokenizer, messages, chat_template_kwargs, system_suffix)
+        return generator.generate(rendered.text)
+
+    return generate
+
+
+def retry_summary(retried: list[dict[str, Any]]) -> dict[str, Any]:
+    """Resumo do arquivo `+retry`: contagens da nova tentativa, erros e latência.
+
+    Sem `hit_max_new_tokens`: lá `output_tokens` soma as duas gerações.
+    """
+    from tanque.infer import repair
+
+    base = summarize(retried)
+    base.pop("hit_max_new_tokens")
+    return {**base, **repair.summarize_retry(retried)}
+
+
+def retry_run_info(info: dict[str, Any]) -> dict[str, Any]:
+    """Run-info do arquivo `+retry` a partir do resumo de `run_predictions(retry=True)`.
+
+    Mesmo modelo, hardware e versões; `system`, `path` e `summary` do `+retry`.
+    """
+    if not info.get("retry_system"):
+        raise ValueError("a execução não teve retry=True")
+    out = {k: v for k, v in info.items() if not k.startswith("retry_")}
+    out.update(
+        system=info["retry_system"],
+        path=info["retry_path"],
+        summary=info["retry_summary"],
+        single_shot_system=info["system"],
+    )
+    return out
