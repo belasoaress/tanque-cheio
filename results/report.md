@@ -39,6 +39,8 @@ EX = execution accuracy (seção 5.6 do plano), a métrica principal; EX toleran
 
 ## Erros do modelo ajustado (teste)
 
+Modelo final: `ft-qwen2.5-coder-1.5b-instruct` (o `ft*` sem nova tentativa de maior EX no teste).
+
 ### `ft-qwen2.5-coder-1.5b-instruct` (split `test`)
 
 36 erros em 150 perguntas. Tipos (heurística por código, com a classificação manual de `results/error-annotations.json` quando houver):
@@ -255,7 +257,7 @@ Comparações pareadas no dev:
 - **Métrica:** EX = execution accuracy (seção 5.6): a SQL prevista é executada com o guardrail e comparada ao resultado da referência; bloqueio, erro ou falta de previsão contam como erro. É a métrica principal (EX rígida): o número de colunas tem de ser o mesmo da referência.
 - **EX tolerante (secundária, D28; definida antes dos resultados da v2):** acerta quando as colunas da referência estão entre as colunas da previsão, que pode ter colunas a mais (até 6 colunas na previsão), em qualquer ordem, com a mesma escolha de colunas para todas as linhas; depois valem as regras da EX rígida (mesmas linhas, arredondamento a 2 casas, ordem quando a pergunta pede). Toda previsão certa na rígida é certa na tolerante. Mede quantos erros são só de colunas a mais (`results_match_relaxed`, seção 5.6 da v2).
 - **IC 95% (D29):** bootstrap percentil sobre as perguntas do split, 10.000 reamostragens com reposição, seed 42 (`tanque.eval.stats`). Com 150 perguntas, a margem da EX é de cerca de ±7 p.p.
-- **Comparações pareadas (D29):** todo par de sistemas pontuados no mesmo split, pergunta a pergunta, na EX rígida. Só A / Só B = perguntas que só um dos dois acerta; p = teste de McNemar exato (binomial, bilateral) sobre esses pares discordantes. p < 0,05 indica diferença dificilmente explicada pelo acaso.
+- **Comparações pareadas (D29):** todo par de sistemas sem nova tentativa pontuados no mesmo split, mais cada sistema × a sua versão `+retry`; pergunta a pergunta, na EX rígida. Só A / Só B = perguntas que só um dos dois acerta; p = teste de McNemar exato (binomial, bilateral) sobre esses pares discordantes. p < 0,05 indica diferença dificilmente explicada pelo acaso.
 - **Modelos locais:** `base-*` (sem treino) e `ft-*` (mesmo base + adapter LoRA do M6, fundido no base antes de gerar), na mesma sessão do Kaggle e na mesma GPU, fp16. Hardware das previsões do teste: `kaggle-t4`. A latência é medida por pergunta, do template à decodificação, numa T4.
 - **Custo por 1.000 perguntas (* = estimativa):** latência média × 1.000 ÷ 3.600.000 ms/h × US$ 0,35/h, o preço de NVIDIA T4 (1 GPU), Google Compute Engine sob demanda, us-central1 em https://cloud.google.com/products/compute/gpus-pricing (consultado em 2026-10-29); não inclui a VM (vCPU e memória), então é um piso. No Kaggle a execução não custou nada; as previsões têm `cost_usd = 0`.
 - **Sem LLM de fronteira por enquanto (D24):** sem crédito de API, o relatório compara só os 2 sistemas locais. `tanque infer claude` continua no repositório; se `results/predictions/claude-*__test.jsonl` for adicionado e pontuado, ele entra nas tabelas sozinho.
