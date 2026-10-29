@@ -1,0 +1,15 @@
+{
+  "id": "belasoares/tanque-cheio-final-v2a",
+  "title": "tanque-cheio-final-v2a",
+  "code_file": "../../06_final_v2.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "dataset_sources": [],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": []
+}
