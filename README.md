@@ -120,7 +120,7 @@ pergunta ──► prompt único (schema + valores + data de referência + conve
 - **Dev e teste separados.** O dev (50) serviu para escolher o modelo base e conferir o
   fine-tuning; o teste (150) foi rodado uma única vez por sistema.
 
-O registro completo das decisões (D1 a D25) está em [`plan.md`](plan.md).
+O registro das decisões da v1 (D1 a D25) está em [`docs/plan-v1.md`](docs/plan-v1.md); o plano da v2 (D26 em diante) está em [`plan.md`](plan.md).
 
 ## Limitações
 
@@ -156,7 +156,7 @@ O registro completo das decisões (D1 a D25) está em [`plan.md`](plan.md).
   [`results/bakeoff.md`](results/bakeoff.md) · treino:
   [`results/training.md`](results/training.md) · schema do banco:
   [`docs/schema.md`](docs/schema.md)
-- Plano do projeto: [`plan.md`](plan.md)
+- Plano do projeto: [`plan.md`](plan.md) (v2) e [`docs/plan-v1.md`](docs/plan-v1.md) (v1)
 
 ## Licença e dados
 
