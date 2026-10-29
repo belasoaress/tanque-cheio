@@ -1,0 +1,26 @@
+{
+  "bytes": 2407141,
+  "parquet": "coletas-2026-09.parquet",
+  "period": {
+    "data_max": "2026-09-30",
+    "data_min": "2024-10-01",
+    "data_referencia": "2026-09-30",
+    "months": 24
+  },
+  "sha256": "55a2b1884665284ac4fc8e770623abb211617ab98c2fed4980e7c475b8a35006",
+  "snapshot_meta_version": 1,
+  "tables": {
+    "coletas": {
+      "md5": "28b2539bff3412b86f6af1ab99fe9063",
+      "rows": 1652562
+    },
+    "municipios": {
+      "md5": "526d5fea58bb1544c24d51440effff36",
+      "rows": 419
+    },
+    "postos": {
+      "md5": "74d3587eb139458e93655bab7b252d5c",
+      "rows": 11051
+    }
+  }
+}

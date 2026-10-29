@@ -1,0 +1,2 @@
+# Snapshot versionado (D25): binário, sem conversão de fim de linha no Windows.
+*.parquet binary

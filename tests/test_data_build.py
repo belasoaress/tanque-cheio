@@ -14,7 +14,15 @@ from typer.testing import CliRunner
 
 from tanque import config
 from tanque.cli import app
-from tanque.data.build import schema_sql
+from tanque.data.build import (
+    make_snapshot_meta,
+    read_snapshot_meta,
+    schema_sql,
+    sha256_file,
+    snapshot_meta_path,
+    table_fingerprints,
+    write_manifest,
+)
 from tanque.data.capitals import CAPITALS
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -248,3 +256,95 @@ def test_real_snapshot_has_exactly_the_27_capitals():
     assert rows == CAPITALS
     every = set(_query(REAL_DB, "SELECT nome, uf FROM municipios"))
     assert CAPITALS <= every
+
+
+# --- Snapshot versionado (D25): banco a partir do Parquet ---
+
+SNAPSHOT = config.resolve_path("snapshot/coletas-2026-09.parquet")
+
+
+def _snapshot_copy(built: Path, tmp_path: Path) -> Path:
+    """Cópia do Parquet das fixtures com o registro (JSON) ao lado, como em snapshot/."""
+    parquet = tmp_path / "snap" / "coletas-teste.parquet"
+    parquet.parent.mkdir()
+    shutil.copy2(built / "parquet" / "coletas.parquet", parquet)
+    meta = make_snapshot_meta(parquet, built / "tanque.duckdb")
+    write_manifest(meta, snapshot_meta_path(parquet))
+    return parquet
+
+
+def _from_parquet(parquet: Path, out: Path):
+    return runner.invoke(
+        app, ["data", "build", "--from-parquet", str(parquet), "--out-dir", str(out)]
+    )
+
+
+def test_build_from_parquet_gives_the_same_database(built, tmp_path):
+    parquet = _snapshot_copy(built, tmp_path)
+    assert snapshot_meta_path(parquet).name == "coletas-teste.json"
+    out = tmp_path / "rebuilt"
+    result = _from_parquet(parquet, out)
+    assert result.exit_code == 0, result.output
+    assert "ok: SHA-256 e tabelas iguais" in result.output
+    original, rebuilt = built / "tanque.duckdb", out / "tanque.duckdb"
+    assert table_fingerprints(rebuilt) == table_fingerprints(original)
+    assert table_fingerprints(rebuilt)["coletas"]["rows"] == 103
+    for table in ("municipios", "postos", "coletas"):
+        sql = f"SELECT * FROM {table} ORDER BY 1"
+        assert _query(rebuilt, sql) == _query(original, sql)
+    assert_schema_matches_contract(rebuilt)
+    assert not (out / "manifest.json").exists() and not (out / "schema.md").exists()
+
+
+def test_build_from_parquet_rejects_a_changed_file(built, tmp_path):
+    parquet = _snapshot_copy(built, tmp_path)
+    with parquet.open("ab") as f:
+        f.write(b"\0")
+    result = _from_parquet(parquet, tmp_path / "o")
+    assert result.exit_code == 1
+    assert "SHA-256 do Parquet diverge" in result.output
+
+
+def test_build_from_parquet_rejects_a_different_database(built, tmp_path):
+    parquet = _snapshot_copy(built, tmp_path)
+    meta_path = snapshot_meta_path(parquet)
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    meta["tables"]["postos"]["md5"] = "0" * 32
+    meta_path.write_text(json.dumps(meta), encoding="utf-8")
+    out = tmp_path / "o"
+    result = _from_parquet(parquet, out)
+    assert result.exit_code == 1
+    assert "diverge do snapshot" in result.output and "postos" in result.output
+    assert not (out / "tanque.duckdb").exists()  # não deixa um banco errado no lugar
+
+
+def test_table_fingerprint_changes_with_one_value(built, tmp_path):
+    db = tmp_path / "copia.duckdb"
+    shutil.copy2(built / "tanque.duckdb", db)
+    before = table_fingerprints(db)
+    con = duckdb.connect(str(db))
+    try:
+        con.execute("UPDATE coletas SET valor_compra = 1.234 WHERE coleta_id = 7")
+    finally:
+        con.close()
+    after = table_fingerprints(db)
+    assert after["coletas"]["rows"] == before["coletas"]["rows"]
+    assert after["coletas"]["md5"] != before["coletas"]["md5"]
+    assert after["postos"] == before["postos"]
+
+
+def test_committed_snapshot_matches_its_sha256():
+    meta = read_snapshot_meta(snapshot_meta_path(SNAPSHOT))
+    assert meta["parquet"] == SNAPSHOT.name
+    assert sha256_file(SNAPSHOT) == meta["sha256"]
+    assert SNAPSHOT.stat().st_size == meta["bytes"]
+    assert meta["period"]["data_referencia"] == "2026-09-30"
+    manifest = json.loads(config.setting_path("manifest").read_text(encoding="utf-8"))
+    assert {t: v["rows"] for t, v in meta["tables"].items()} == manifest["tables"]
+    assert meta["period"] == manifest["period"]
+
+
+@real_snapshot
+def test_real_database_matches_the_committed_snapshot():
+    meta = read_snapshot_meta(snapshot_meta_path(SNAPSHOT))
+    assert table_fingerprints(REAL_DB) == meta["tables"]

@@ -10,7 +10,16 @@ import duckdb
 import typer
 
 from tanque import config
-from tanque.data.build import BuildPaths, run_pipeline
+from tanque.data.build import (
+    BuildPaths,
+    SnapshotError,
+    build_from_parquet,
+    make_snapshot_meta,
+    read_snapshot_meta,
+    run_pipeline,
+    snapshot_meta_path,
+    write_manifest,
+)
 from tanque.data.capitals import CAPITALS
 from tanque.data.download import DownloadError, download_all, local_files, sources_from_settings
 
@@ -79,9 +88,21 @@ def build(
     schema_doc: Annotated[
         Path | None, typer.Option(help="Caminho do schema.md (padrão: docs/schema.md).")
     ] = None,
+    from_parquet: Annotated[
+        Path | None,
+        typer.Option(
+            help="Constrói só o banco a partir deste Parquet normalizado (ex.: o snapshot "
+            "versionado, snapshot/coletas-2026-09.parquet), sem CSVs nem download. Confere "
+            "o SHA-256 e as tabelas contra o JSON ao lado do Parquet, se existir. Não mexe "
+            "em data/manifest.json nem em docs/schema.md."
+        ),
+    ] = None,
 ) -> None:
     """Do zero: download -> normalize -> build -> manifest -> docs/schema.md."""
     settings = config.load_settings()
+    if from_parquet is not None:
+        _build_from_parquet(from_parquet, out_dir, settings)
+        return
     try:
         if raw_dir is not None:
             raw_dir = raw_dir.resolve()
@@ -102,6 +123,46 @@ def build(
         f"({rows['rejected_total']} rejeitadas); período "
         f"{manifest['period']['data_min']} a {manifest['period']['data_max']}"
     )
+
+
+def _build_from_parquet(parquet: Path, out_dir: Path | None, settings: dict) -> None:
+    parquet = parquet.resolve()
+    if out_dir is not None:
+        db = out_dir.resolve() / "tanque.duckdb"
+    else:
+        db = config.setting_path("db_path", settings)
+    meta_path = snapshot_meta_path(parquet)
+    meta = read_snapshot_meta(meta_path) if meta_path.is_file() else None
+    try:
+        prints = build_from_parquet(parquet, db, meta)
+    except SnapshotError as exc:
+        typer.echo(f"Erro: {exc}", err=True)
+        raise typer.Exit(1) from exc
+    typer.echo(f"[data] banco -> {db} (a partir de {parquet.name})")
+    for table, fp in prints.items():
+        typer.echo(f"  {table:<11} {fp['rows']:>10}  md5 {fp['md5']}")
+    if meta is None:
+        typer.echo(f"Aviso: {meta_path.name} não encontrado; SHA-256 e tabelas não conferidos.")
+    else:
+        typer.echo(f"ok: SHA-256 e tabelas iguais ao registro {meta_path.name}")
+
+
+@app.command()
+def snapshot(
+    parquet: Annotated[Path, typer.Argument(help="Parquet normalizado do snapshot.")],
+    db: Annotated[
+        Path | None, typer.Option(help="Banco de origem (padrão: data/tanque.duckdb).")
+    ] = None,
+) -> None:
+    """Grava o registro do snapshot (SHA-256 do Parquet; contagem e MD5 por tabela do banco)."""
+    settings = config.load_settings()
+    db = db.resolve() if db else config.setting_path("db_path", settings)
+    if not db.is_file():
+        typer.echo(f"Banco não encontrado: {db}.", err=True)
+        raise typer.Exit(1)
+    meta = make_snapshot_meta(parquet.resolve(), db)
+    out = write_manifest(meta, snapshot_meta_path(parquet.resolve()))
+    typer.echo(f"Registro do snapshot -> {out} (sha256 {meta['sha256']})")
 
 
 @app.command()
