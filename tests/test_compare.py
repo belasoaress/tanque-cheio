@@ -1,11 +1,11 @@
-"""Testes do comparador de resultados (src/tanque/eval/compare.py, seção 5.6)."""
+"""Testes do comparador de resultados (src/tanque/eval/compare.py, seção 5.6 v1 e v2)."""
 
 import datetime as dt
 from decimal import Decimal
 
 import pytest
 
-from tanque.eval.compare import normalize_value, results_match
+from tanque.eval.compare import normalize_value, results_match, results_match_relaxed
 from tanque.sql.execute import ExecResult
 
 
@@ -197,3 +197,131 @@ def test_mixed_types_in_column_do_not_crash() -> None:
     gold = res([(1, "a"), (None, "b"), ("x", None)])
     pred = res([("x", None), (None, "b"), (1, "a")])
     assert results_match(gold, pred, order_matters=False)
+
+
+# ---------- results_match_relaxed (EX tolerante, 5.6 v2, D28) ----------
+
+
+def test_relaxed_accepts_extra_columns() -> None:
+    gold = res([("SP",), ("PE",)], columns=["uf"])
+    pred = res([("SP", 6.19), ("PE", 6.49)], columns=["uf", "media"])
+    assert not results_match(gold, pred, order_matters=False)
+    assert results_match_relaxed(gold, pred, order_matters=False)
+
+
+def test_relaxed_extra_columns_in_any_position_and_permuted() -> None:
+    gold = res([("SAO PAULO", "SP"), ("RECIFE", "PE")])
+    pred = res([(6.19, "SP", 1, "SAO PAULO"), (6.49, "PE", 2, "RECIFE")])
+    assert results_match_relaxed(gold, pred, order_matters=False)
+    assert results_match_relaxed(gold, pred, order_matters=True)
+
+
+def test_relaxed_rejects_missing_columns() -> None:
+    gold = res([("SP", 6.19)])
+    assert not results_match_relaxed(gold, res([("SP",)]), order_matters=False)
+    assert not results_match_relaxed(gold, res([(6.19,)]), order_matters=False)
+
+
+def test_relaxed_still_needs_same_rows() -> None:
+    gold = res([("SP",), ("PE",)])
+    # Uma linha a mais (ou a menos) continua errada, mesmo com as colunas certas.
+    assert not results_match_relaxed(gold, res([("SP", 1), ("PE", 2), ("PR", 3)]), False)
+    assert not results_match_relaxed(gold, res([("SP", 1)]), False)
+    # Valores diferentes também.
+    assert not results_match_relaxed(gold, res([("SP", 1), ("RJ", 2)]), False)
+
+
+def test_relaxed_respects_order() -> None:
+    gold = res([("SP",), ("PE",)])
+    pred = res([("PE", 6.49), ("SP", 6.19)])
+    assert not results_match_relaxed(gold, pred, order_matters=True)
+    assert results_match_relaxed(gold, pred, order_matters=False)
+    assert results_match_relaxed(gold, res([("SP", 6.19), ("PE", 6.49)]), order_matters=True)
+
+
+def test_relaxed_same_permutation_for_all_rows() -> None:
+    # A linha 1 casa pela coluna 0 e a linha 2 pela coluna 1, mas nenhuma coluna serve
+    # para as duas linhas.
+    gold = res([("SP",), ("PE",)])
+    pred = res([("SP", "RJ"), ("MG", "PE")])
+    assert not results_match_relaxed(gold, pred, order_matters=True)
+    assert not results_match_relaxed(gold, pred, order_matters=False)
+
+
+def test_relaxed_column_multisets_are_not_enough() -> None:
+    # Cada coluna do gold tem o mesmo multiconjunto que uma coluna da previsão, mas os
+    # pares (linha a linha) não batem.
+    gold = res([("SP", 1), ("PE", 2)])
+    pred = res([("SP", 2, "x"), ("PE", 1, "y")])
+    assert not results_match_relaxed(gold, pred, order_matters=False)
+
+
+def test_relaxed_up_to_six_prediction_columns() -> None:
+    gold = res([("SP",)])
+    six = res([(1, 2, 3, 4, 5, "SP")])
+    seven = res([(1, 2, 3, 4, 5, 6, "SP")])
+    assert results_match_relaxed(gold, six, order_matters=True)
+    assert not results_match_relaxed(gold, seven, order_matters=True)
+
+
+def test_relaxed_permutes_five_and_six_columns() -> None:
+    # O rígido só permuta até 4 colunas; o tolerante procura entre até 6.
+    gold = res([(1, 2, 3, 4, 5)])
+    pred = res([(5, 4, 3, 2, 1, 0)])
+    assert results_match_relaxed(gold, pred, order_matters=True)
+    assert results_match_relaxed(res([(1, 2, 3, 4, 5, 6)]), res([(6, 5, 4, 3, 2, 1)]), True)
+
+
+def test_relaxed_implied_by_rigid_even_beyond_six_columns() -> None:
+    gold = res([(1, 2, 3, 4, 5, 6, 7)])
+    assert results_match(gold, gold, order_matters=True)
+    assert results_match_relaxed(gold, gold, order_matters=True)
+
+
+def test_relaxed_duplicate_equal_columns() -> None:
+    # Colunas repetidas na previsão: qualquer uma serve.
+    gold = res([("SAO PAULO", "SP"), ("RECIFE", "PE")])
+    pred = res([("SAO PAULO", "SAO PAULO", "SP"), ("RECIFE", "RECIFE", "PE")])
+    assert results_match_relaxed(gold, pred, order_matters=True)
+    # Duas colunas iguais no gold precisam de duas colunas distintas na previsão.
+    gold2 = res([("SP", "SP"), ("PE", "PE")])
+    assert not results_match_relaxed(gold2, res([("SP", 1), ("PE", 2)]), order_matters=False)
+    assert results_match_relaxed(gold2, res([("SP", 1, "SP"), ("PE", 2, "PE")]), False)
+
+
+def test_relaxed_empty_results() -> None:
+    gold = res([], columns=["a"])
+    assert results_match_relaxed(gold, res([], columns=["a", "b"]), order_matters=False)
+    assert not results_match_relaxed(res([], columns=["a", "b"]), gold, order_matters=False)
+    assert not results_match_relaxed(gold, res([(1, 2)]), order_matters=False)
+    assert not results_match_relaxed(res([(1,)]), res([], columns=["a", "b"]), False)
+
+
+def test_relaxed_errors_never_match() -> None:
+    gold = res([(1,)])
+    assert not results_match_relaxed(gold, res([], error="Binder Error"), order_matters=False)
+    assert not results_match_relaxed(gold, res([], error="x", blocked=True), False)
+    assert not results_match_relaxed(res([], error="x"), res([(1,)]), order_matters=False)
+
+
+def test_relaxed_uses_same_value_rules() -> None:
+    gold = res([("SP", Decimal("6.190"))])
+    pred = res([(" SP ", 6.1904999, "extra")])
+    assert results_match_relaxed(gold, pred, order_matters=True)
+    assert not results_match_relaxed(gold, res([("SP", 6.1999, "extra")]), True)
+
+
+@pytest.mark.parametrize(
+    ("gold_rows", "pred_rows", "order_matters"),
+    [
+        ([("SP", 1), ("PE", 2)], [(2, "PE"), (1, "SP")], False),
+        ([("SP", 1), ("PE", 2)], [("SP", 1), ("PE", 2)], True),
+        ([(1, 2, 3, 4)], [(4, 3, 2, 1)], True),
+        ([(None, float("nan"))], [(None, float("nan"))], True),
+        ([("SP",), ("SP",), ("PE",)], [("PE",), ("SP",), ("SP",)], False),
+    ],
+)
+def test_rigid_match_implies_relaxed(gold_rows, pred_rows, order_matters) -> None:
+    gold, pred = res(gold_rows), res(pred_rows)
+    assert results_match(gold, pred, order_matters)
+    assert results_match_relaxed(gold, pred, order_matters)

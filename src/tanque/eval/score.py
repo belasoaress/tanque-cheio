@@ -1,13 +1,17 @@
-"""Cálculo das métricas de um sistema sobre um dataset (seções 5.2, 5.3 e 5.6).
+"""Cálculo das métricas de um sistema sobre um dataset (seções 5.2, 5.3, 5.6 e 5.7 v2).
 
 Para cada item do dataset, executa a SQL de referência (gold) e a SQL prevista
 com `tanque.sql.execute.run` (guardrail ligado) e compara com
-`tanque.eval.compare.results_match`.
+`tanque.eval.compare.results_match` (EX rígida) e `results_match_relaxed` (EX
+tolerante, D28).
 
 Métricas (todas sobre os `n` itens do dataset):
 
 - `ex`: fração de acertos; item sem previsão, bloqueado ou com erro conta como errado;
-- `ex_by_difficulty`: `{nivel: {n, ex}}` para `facil`, `medio` e `dificil`;
+- `ex_relaxed`: o mesmo com a EX tolerante (a previsão pode ter colunas a mais);
+- `ex_ci95`, `ex_relaxed_ci95`: `[lo, hi]`, IC bootstrap percentil de 95% (D29;
+  10.000 reamostragens, seed 42; ver `stats.py`);
+- `ex_by_difficulty`: `{nivel: {n, ex, ex_relaxed}}` para `facil`, `medio` e `dificil`;
 - `valid_sql_rate`: fração com SQL que passou no guardrail e executou sem erro
   (item sem previsão ou com `error` de geração conta como inválido);
 - `blocked_rate`: fração bloqueada pelo guardrail;
@@ -24,24 +28,37 @@ com chaves ordenadas e sem horário, para o CI poder comparar o arquivo byte a b
 (`results/predictions/<sistema>__{dev,test}.jsonl`; amostras `-sampleN` ficam de
 fora) e `diff_metrics` lista as diferenças contra `metrics.json`: é a regressão
 do CI (`tanque eval check-metrics`, M7).
+
+**Comparações pareadas** (`comparisons`, 5.7 v2): a chave reservada `comparisons` de
+`metrics.json` é uma lista com **todo par de sistemas pontuados no mesmo split**,
+`{a, b, split, n, a_only, b_only, delta_ex, mcnemar_p}`, com `delta_ex = ex(b) − ex(a)`
+e o McNemar exato sobre a EX rígida, pergunta a pergunta (`a_only`/`b_only` = itens que
+só `a`/só `b` acertam). `a` vem antes de `b` na ordem dos sistemas (`base-*`, `ft-*`,
+`ft2-*`, `claude-*`, outros; alfabética dentro de cada grupo), então base → ajustado
+sai sempre nesse sentido. A lista é ordenada por split (`dev`, `test`), `a` e `b`.
+Como precisa do acerto item a item de dois sistemas, só `recompute_all` (`tanque eval
+check-metrics --write`) a calcula; `tanque eval score` grava um sistema e deixa a
+lista como está, e o CI acusa se ela ficar desatualizada.
 """
 
 from __future__ import annotations
 
 import json
-import math
 from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from tanque import config
-from tanque.eval.compare import results_match
+from tanque.eval import stats
+from tanque.eval.compare import results_match, results_match_relaxed
 from tanque.sql import execute
 from tanque.sql.execute import ExecResult
 
 DIFFICULTIES = ("facil", "medio", "dificil")
 METRICS_FILENAME = "metrics.json"
+COMPARISONS_KEY = "comparisons"
+SYSTEM_ORDER = ("base-", "ft-", "ft2-", "claude-")
 
 
 class GoldError(RuntimeError):
@@ -61,6 +78,7 @@ class ItemResult:
     valid: bool
     blocked: bool
     pred_error: str | None
+    correct_relaxed: bool = False
 
 
 @dataclass
@@ -96,16 +114,29 @@ def read_jsonl(path: str | Path) -> list[dict[str, Any]]:
 
 def percentile(values: Iterable[float], q: float) -> float | None:
     """Percentil `q` (0–100) com interpolação linear entre vizinhos (como o numpy)."""
-    data = sorted(values)
-    if not data:
-        return None
-    pos = (len(data) - 1) * q / 100
-    lo, hi = math.floor(pos), math.ceil(pos)
-    return data[lo] + (data[hi] - data[lo]) * (pos - lo)
+    return stats.percentile(values, q)
 
 
 def _rate(num: int, den: int) -> float | None:
     return round(num / den, 4) if den else None
+
+
+def _ci95(flags: list[bool]) -> list[float] | None:
+    ci = stats.bootstrap_ci([1 if f else 0 for f in flags])
+    return None if ci is None else [round(ci[0], 4), round(ci[1], 4)]
+
+
+def system_sort_key(system: str) -> tuple[int, str]:
+    """Ordem dos sistemas em tabelas e comparações: base, ft, ft2, claude, outros."""
+    for rank, prefix in enumerate(SYSTEM_ORDER):
+        if system.startswith(prefix):
+            return rank, system
+    return len(SYSTEM_ORDER), system
+
+
+def system_metrics(data: dict[str, Any]) -> dict[str, Any]:
+    """`{system: {split: métricas}}` de um metrics.json, sem a chave `comparisons`."""
+    return {k: v for k, v in data.items() if k != COMPARISONS_KEY}
 
 
 def _run(sql: str, db_path: Path | None, timeout_s: float | None, max_rows: int | None):
@@ -207,11 +238,11 @@ def score(
             continue
         res = _run(str(sql), db, timeout_s, max_rows)
         valid = not res.blocked and res.error is None
-        correct = valid and results_match(
-            gold_results[item_id], res, order_matters=bool(item.get("order_matters"))
-        )
+        order_matters = bool(item.get("order_matters"))
+        correct = valid and results_match(gold_results[item_id], res, order_matters)
+        relaxed = valid and results_match_relaxed(gold_results[item_id], res, order_matters)
         results.append(
-            ItemResult(item_id, difficulty, True, correct, valid, res.blocked, res.error)
+            ItemResult(item_id, difficulty, True, correct, valid, res.blocked, res.error, relaxed)
         )
 
     n = len(results)
@@ -221,6 +252,7 @@ def score(
         by_level[level] = {
             "n": len(level_items),
             "ex": _rate(sum(r.correct for r in level_items), len(level_items)),
+            "ex_relaxed": _rate(sum(r.correct_relaxed for r in level_items), len(level_items)),
         }
     unknown = sorted({r.difficulty for r in results} - set(DIFFICULTIES))
     if unknown:
@@ -237,6 +269,9 @@ def score(
         "n": n,
         "n_missing": sum(not r.has_prediction for r in results),
         "ex": _rate(sum(r.correct for r in results), n),
+        "ex_relaxed": _rate(sum(r.correct_relaxed for r in results), n),
+        "ex_ci95": _ci95([r.correct for r in results]),
+        "ex_relaxed_ci95": _ci95([r.correct_relaxed for r in results]),
         "ex_by_difficulty": by_level,
         "valid_sql_rate": _rate(sum(r.valid for r in results), n),
         "blocked_rate": _rate(sum(r.blocked for r in results), n),
@@ -264,9 +299,13 @@ def dump_json(data: Any) -> str:
 
 
 def write_metrics(path: str | Path, result: ScoreResult) -> Path:
-    """Grava `result` em `path` na chave `[system][split]`, preservando o resto."""
+    """Grava `result` em `path` na chave `[system][split]`, preservando o resto.
+
+    `comparisons` fica como está (só `recompute_all` a recalcula).
+    """
     path = Path(path)
     data = load_metrics(path)
+    _reject_reserved(result.system)
     data.setdefault(result.system, {})[result.split] = result.metrics
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8", newline="\n") as f:
@@ -291,8 +330,9 @@ def recompute_all(
     dataset_dir: str | Path,
     db_path: str | Path | None = None,
 ) -> dict[str, Any]:
-    """`{system: {split: métricas}}` recalculado de todas as previsões commitadas."""
+    """`{system: {split: métricas}, "comparisons": [...]}` de todas as previsões commitadas."""
     data: dict[str, Any] = {}
+    scored: list[ScoreResult] = []
     for split, path in committed_predictions(predictions_dir):
         result = score(Path(dataset_dir) / f"{split}.jsonl", path, db_path=db_path)
         expected_system = path.name[: -len(f"__{split}.jsonl")]
@@ -300,8 +340,41 @@ def recompute_all(
             raise PredictionsError(
                 f"{path.name}: `system` = {result.system!r} não bate com o nome do arquivo"
             )
+        _reject_reserved(result.system)
         data.setdefault(result.system, {})[result.split] = result.metrics
+        scored.append(result)
+    comparisons = paired_comparisons(scored)
+    if comparisons:
+        data[COMPARISONS_KEY] = comparisons
     return data
+
+
+def _reject_reserved(system: str) -> None:
+    if system == COMPARISONS_KEY:
+        raise PredictionsError(f"`{COMPARISONS_KEY}` é reservado e não pode ser nome de sistema")
+
+
+def paired_comparisons(results: list[ScoreResult]) -> list[dict[str, Any]]:
+    """Todo par de sistemas no mesmo split (ver o docstring do módulo), com McNemar."""
+    by_split: dict[str, list[ScoreResult]] = {}
+    for r in results:
+        by_split.setdefault(r.split, []).append(r)
+    split_rank = {s: i for i, s in enumerate(PREDICTION_SPLITS)}
+    out = []
+    for split in sorted(by_split, key=lambda s: (split_rank.get(s, len(split_rank)), s)):
+        systems = sorted(by_split[split], key=lambda r: system_sort_key(r.system))
+        for i, a in enumerate(systems):
+            for b in systems[i + 1 :]:
+                a_items = {it.id: it.correct for it in a.items}
+                b_items = {it.id: it.correct for it in b.items}
+                if set(a_items) != set(b_items):
+                    raise PredictionsError(
+                        f"{a.system} e {b.system} no split {split} não têm os mesmos itens"
+                    )
+                ids = sorted(a_items)
+                cmp = stats.paired_comparison([a_items[k] for k in ids], [b_items[k] for k in ids])
+                out.append({"a": a.system, "b": b.system, "split": split, **cmp})
+    return out
 
 
 def diff_metrics(expected: Any, actual: Any, path: str = "") -> list[str]:

@@ -53,10 +53,13 @@ def test_predictions_equal_to_gold_give_ex_one(m2_toy_db, m2_dataset, gold_predi
     assert m["blocked_rate"] == 0.0
     assert m["n_missing"] == 0
     assert m["ex_by_difficulty"] == {
-        "facil": {"n": 2, "ex": 1.0},
-        "medio": {"n": 1, "ex": 1.0},
-        "dificil": {"n": 1, "ex": 1.0},
+        "facil": {"n": 2, "ex": 1.0, "ex_relaxed": 1.0},
+        "medio": {"n": 1, "ex": 1.0, "ex_relaxed": 1.0},
+        "dificil": {"n": 1, "ex": 1.0, "ex_relaxed": 1.0},
     }
+    assert m["ex_relaxed"] == 1.0
+    assert m["ex_ci95"] == [1.0, 1.0]
+    assert m["ex_relaxed_ci95"] == [1.0, 1.0]
 
 
 def test_mixed_predictions(tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_write_jsonl) -> None:
@@ -77,11 +80,83 @@ def test_mixed_predictions(tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_wri
     assert m["ex"] == 0.25
     assert m["valid_sql_rate"] == 0.5  # facil2 e medio executaram
     assert m["blocked_rate"] == 0.25
-    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5}
-    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0}
-    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0}
+    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5, "ex_relaxed": 0.5}
+    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert m["ex_relaxed"] == 0.25
+    lo, hi = m["ex_ci95"]
+    assert 0.0 <= lo <= 0.25 <= hi <= 1.0
     assert m["latency_ms"] == {"p50": 200.0, "p95": 290.0, "mean": 200.0}
     assert m["cost_per_1k_usd"] == pytest.approx(0.5)  # 0.002 / 4 itens * 1000
+
+
+def test_relaxed_ex_accepts_extra_columns(
+    tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_write_jsonl
+) -> None:
+    facil1, facil2, medio, dificil = m2_toy_items
+    rows = [
+        prediction(facil1),
+        # coluna a mais (o mínimo junto da contagem): errado na rígida, certo na tolerante
+        prediction(
+            facil2, "SELECT MIN(valor_venda), COUNT(*), produto FROM coletas GROUP BY produto"
+        ),
+        # coluna a mais e a ordem certa
+        prediction(medio, medio["sql"].replace("SELECT m.uf,", "SELECT m.uf, COUNT(*),")),
+        # coluna faltando: errado nas duas
+        prediction(dificil, "SELECT 1"),
+    ]
+    preds = m2_write_jsonl(tmp_path / "p.jsonl", rows)
+    result = score.score(m2_dataset, preds, db_path=m2_toy_db)
+    m = result.metrics
+    assert m["ex"] == 0.25
+    assert m["ex_relaxed"] == 0.75
+    assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5, "ex_relaxed": 1.0}
+    assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0, "ex_relaxed": 1.0}
+    assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0, "ex_relaxed": 0.0}
+    assert [r.correct_relaxed for r in result.items] == [True, True, True, False]
+    assert all(r.correct_relaxed for r in result.items if r.correct)
+    assert m["ex_relaxed_ci95"][0] <= 0.75 <= m["ex_relaxed_ci95"][1]
+
+
+def test_paired_comparisons_cover_every_pair_in_a_split() -> None:
+    def fake(system: str, split: str, flags: list[bool]) -> score.ScoreResult:
+        items = [
+            score.ItemResult(f"i{k}", "facil", True, f, True, False, None, f)
+            for k, f in enumerate(flags)
+        ]
+        return score.ScoreResult(system, split, {}, items)
+
+    results = [
+        fake("ft-m", "test", [True, True, True, True, False]),
+        fake("base-m", "test", [False, False, True, False, False]),
+        fake("claude-x", "test", [True, True, True, True, True]),
+        fake("base-m", "dev", [True, False]),
+    ]
+    out = score.paired_comparisons(results)
+    assert [(c["split"], c["a"], c["b"]) for c in out] == [
+        ("test", "base-m", "ft-m"),
+        ("test", "base-m", "claude-x"),
+        ("test", "ft-m", "claude-x"),
+    ]
+    assert out[0] == {
+        "a": "base-m",
+        "b": "ft-m",
+        "split": "test",
+        "n": 5,
+        "a_only": 0,
+        "b_only": 3,
+        "delta_ex": 0.6,
+        "mcnemar_p": 0.25,
+    }
+    with pytest.raises(PredictionsError):
+        score.paired_comparisons(
+            [fake("base-m", "dev", [True]), fake("ft-m", "dev", [True, False])]
+        )
+
+
+def test_system_metrics_drops_comparisons() -> None:
+    data = {"base-m": {"dev": {}}, "comparisons": []}
+    assert score.system_metrics(data) == {"base-m": {"dev": {}}}
 
 
 def test_generation_error_counts_as_invalid(

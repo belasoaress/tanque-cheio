@@ -203,6 +203,69 @@ def test_third_system_enters_by_itself():
     assert "inclui a rede" in text and "D24" not in text
 
 
+def test_main_table_shows_relaxed_ex_and_confidence_intervals():
+    ft = {
+        **metric(0.7, 3000.0, 3600.0),
+        "ex_ci95": [0.6267, 0.7733],
+        "ex_relaxed": 0.82,
+        "ex_relaxed_ci95": [0.7533, 0.88],
+    }
+    text = report.render({**FAKE, "ft-m": {**FAKE["ft-m"], "test": ft}}, report.ReportContext())
+    header = next(line for line in text.splitlines() if line.startswith("| Sistema"))
+    assert "| EX | IC 95% EX | EX tolerante | IC 95% tolerante | EX fácil |" in header
+    assert "| `ft-m` | test | 150 | 70,0% | 62,7–77,3% | 82,0% | 75,3–88,0% | 90,0% |" in text
+    # métricas antigas, sem os campos novos: traço, sem quebrar
+    assert "| `base-m` | test | 150 | 10,0% | — | — | — | 30,0% |" in text
+    comparison = text.split("## Base → ajustado", 1)[1].split("##", 1)[0]
+    assert "| EX tolerante | — | 82,0% | — |" in comparison
+
+
+def test_paired_comparisons_table_and_method_note():
+    metrics = {
+        **FAKE,
+        "comparisons": [
+            {
+                "a": "base-m",
+                "b": "ft-m",
+                "split": "test",
+                "n": 150,
+                "a_only": 2,
+                "b_only": 92,
+                "delta_ex": 0.6,
+                "mcnemar_p": 2.4e-25,
+            },
+            {
+                "a": "base-m",
+                "b": "ft-m",
+                "split": "dev",
+                "n": 50,
+                "a_only": 3,
+                "b_only": 6,
+                "delta_ex": 0.06,
+                "mcnemar_p": 0.5078,
+            },
+        ],
+    }
+    text = report.render(metrics, report.ReportContext())
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
+    assert "| A | B | N | EX A | EX B | Δ EX (B − A) | Só A | Só B | p (McNemar) |" in paired
+    assert "| `base-m` | `ft-m` | 150 | 10,0% | 70,0% | +60,0 p.p. | 2 | 92 | < 0,001 |" in paired
+    dev = text.split("## Referência: dev", 1)[1]
+    assert "| `base-m` | `ft-m` | 50 | — | 74,0% | +6,0 p.p. | 3 | 6 | 0,508 |" in dev
+    note = text.split("## Nota de método", 1)[1]
+    assert "**EX tolerante (secundária, D28" in note
+    assert "10.000 reamostragens" in note and "seed 42" in note
+    assert "McNemar exato" in note
+    # a chave `comparisons` não vira sistema nem split
+    assert "`comparisons`" not in text.split("## Nota de método", 1)[0]
+
+
+def test_paired_table_pending_without_comparisons():
+    text = report.render(FAKE, report.ReportContext())
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
+    assert "_Pendente: precisa de 2 sistemas pontuados no teste" in paired
+
+
 def test_render_without_test_metrics_says_pending():
     text = report.render({"base-m": {"dev": metric(0.1, 1.0, 1.0, n=50)}})
     assert "_Previsões do teste ainda não pontuadas" in text
@@ -280,7 +343,21 @@ def test_check_metrics_write_then_check_then_detect_drift(workspace):
     result = _cli("check-metrics", *common, "--write")
     assert result.exit_code == 0, result.output
     data = json.loads(metrics.read_text(encoding="utf-8"))
-    assert set(data) == {"base-brinquedo", "ft-brinquedo"}
+    assert set(data) == {"base-brinquedo", "ft-brinquedo", "comparisons"}
+    assert data["comparisons"] == [
+        {
+            "a": "base-brinquedo",
+            "b": "ft-brinquedo",
+            "split": "test",
+            "n": 4,
+            "a_only": 0,
+            "b_only": 0,
+            "delta_ex": 0.0,
+            "mcnemar_p": 1.0,
+        }
+    ]
+    assert data["ft-brinquedo"]["test"]["ex_relaxed"] == 0.0
+    assert data["ft-brinquedo"]["test"]["ex_ci95"] == [0.0, 0.0]
     assert set(data["base-brinquedo"]) == {"dev", "test"}
     assert data["base-brinquedo"]["dev"]["ex"] == 1.0
     assert data["ft-brinquedo"]["test"]["ex"] == 0.0
@@ -291,11 +368,13 @@ def test_check_metrics_write_then_check_then_detect_drift(workspace):
 
     data["ft-brinquedo"]["test"]["ex"] = 0.5
     data["fantasma"] = {"dev": {}}
+    data["comparisons"][0]["mcnemar_p"] = 0.5
     metrics.write_text(score.dump_json(data), encoding="utf-8")
     result = _cli("check-metrics", *common)
     assert result.exit_code == 1
     assert "ft-brinquedo.test.ex" in result.output
     assert "fantasma: está em metrics.json, mas não foi recalculado" in result.output
+    assert "comparisons" in result.output
 
 
 def test_check_metrics_rejects_a_file_named_after_another_system(workspace):
