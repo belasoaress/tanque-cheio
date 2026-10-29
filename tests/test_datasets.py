@@ -205,6 +205,5 @@ def test_no_question_shared_between_dev2_and_test(dev2):
     assert not {_norm(i["question"]) for i in dev2} & test
 
 
-@pytest.mark.xfail(strict=False, reason="aguarda revisão humana do M13")
 def test_dev2_all_reviewed(dev2):
     assert all(i["reviewed"] for i in dev2)
