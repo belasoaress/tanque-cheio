@@ -312,6 +312,13 @@ def score(
         "cost_per_1k_usd": round(total_cost / n * 1000, 6),
         "hardware": sorted({str(p["hardware"]) for p in present if p.get("hardware")}),
     }
+    # 5.3 v2: só aparecem quando as previsões trazem os campos (métricas da v1 não mudam).
+    gpus = [int(p["gpus"]) for p in present if p.get("gpus") is not None]
+    if gpus:
+        metrics["gpus"] = max(gpus)
+    peaks = [float(p["peak_gpu_mem_gib"]) for p in present if p.get("peak_gpu_mem_gib") is not None]
+    if peaks:
+        metrics["peak_gpu_mem_gib"] = round(max(peaks), 2)
     return ScoreResult(system, _split_of(items, dataset_path), metrics, results)
 
 

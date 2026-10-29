@@ -140,6 +140,12 @@ def test_cost_per_1k_api_estimate_or_missing():
     assert report.cost_per_1k(old, GPU) == (None, False)
 
 
+def test_cost_per_1k_scales_with_gpus():
+    # D35: o 32B em 2 T4 paga 2 GPUs por hora.
+    two = {"hardware": ["kaggle-t4"], "latency_ms": {"mean": 7200.0}, "gpus": 2}
+    assert report.cost_per_1k(two, GPU) == (pytest.approx(1.4), True)
+
+
 def test_settings_has_a_sourced_gpu_price():
     gpu = report.load_gpu_price()
     assert gpu is not None and gpu.hour_usd > 0

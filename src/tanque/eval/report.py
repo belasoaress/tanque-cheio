@@ -173,7 +173,8 @@ def cost_per_1k(m: dict[str, Any], gpu: GpuPrice | None) -> tuple[float | None, 
     hardware = m.get("hardware") or []
     mean = (m.get("latency_ms") or {}).get("mean")
     if gpu and hardware and mean is not None and set(hardware) <= set(gpu.hardware):
-        return gpu_cost_per_1k(float(mean), gpu.hour_usd), True
+        # D35: preço por GPU × GPUs usadas (o 32B roda em 2 T4).
+        return gpu_cost_per_1k(float(mean), gpu.hour_usd * int(m.get("gpus") or 1)), True
     return None, False
 
 
