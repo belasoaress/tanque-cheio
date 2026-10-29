@@ -66,3 +66,30 @@ def test_with_overrides_does_not_mutate(cfg):
 def test_unknown_override_key_is_an_error(cfg):
     with pytest.raises(KeyError):
         train_config.with_overrides(cfg, {"lora": {"rank": 8}})
+
+
+# --- configs/train-v2.toml (M15) -----------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def cfg_v2():
+    return train_config.load_train_config("configs/train-v2.toml")
+
+
+def test_v2_keeps_the_v1_hyperparameters(cfg, cfg_v2):
+    # mesmos hiperparâmetros (plano, M15); só o nome do sistema e o commit fixado mudam
+    for section in ("quantization", "lora", "training"):
+        assert cfg_v2[section] == cfg[section], section
+    same_data = {k: v for k, v in cfg["data"].items() if k != "max_seq_len"}
+    assert {k: cfg_v2["data"][k] for k in same_data} == same_data
+    assert cfg_v2["data"]["max_seq_len"] >= cfg["data"]["max_seq_len"]
+    assert cfg_v2["model"]["base_model"] == cfg["model"]["base_model"]
+    assert cfg_v2["model"]["revision"] == "2e1fd397ee46e1388853d2af2c993145b0f1098a"
+
+
+def test_system_names_v1_and_v2(cfg, cfg_v2):
+    assert train_config.system_name(cfg) == "ft-qwen2.5-coder-1.5b-instruct"
+    assert train_config.system_name(cfg_v2) == "ft2-qwen2.5-coder-1.5b-instruct"
+    bad = train_config.with_overrides(cfg_v2, {"model": {"system_prefix": "ft3"}})
+    with pytest.raises(ValueError):
+        train_config.system_name(bad)

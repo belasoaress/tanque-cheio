@@ -1,0 +1,78 @@
+# Treino v2 (M15): cópia de configs/train.toml (M6) com os MESMOS hiperparâmetros. Só
+# mudam: o nome do sistema (`system_prefix = "ft2"` -> ft2-qwen2.5-coder-1.5b-instruct,
+# 5.3 v2), o checkpoint do modelo base fixado no mesmo commit que a v1 usou (regra 0.8)
+# e os comentários de tamanho do treino. Lido por `tanque.train.config` e pelo notebook
+# `notebooks/02_finetune.ipynb` (CONFIG = "configs/train-v2.toml", o padrão). Cada
+# rodada registrada em `results/training-v2.md` cita o commit deste arquivo.
+
+[model]
+# Modelo base: o recomendado pelo bake-off (results/bakeoff.md). A escolha final é da
+# Isabela; para trocar, mude só esta linha (e, se for Qwen3/SmolLM3, os dois campos
+# abaixo e `lora.target_modules`).
+base_model = "Qwen/Qwen2.5-Coder-1.5B-Instruct"
+# O mesmo commit que o M6 usou (train-log do ft-v1 e 04_test_predict).
+revision = "2e1fd397ee46e1388853d2af2c993145b0f1098a"
+# Mesmas opções de template da inferência (notebooks/01_bakeoff.ipynb):
+# Qwen3 / SmolLM3: chat_template_kwargs = { enable_thinking = false }
+# SmolLM3: system_suffix = "/system_override"
+chat_template_kwargs = {}
+system_suffix = ""
+# Prefixo do sistema treinado (5.3 v2): "ft" na v1, "ft2" no treino v2.
+system_prefix = "ft2"
+
+[quantization]
+# QLoRA: pesos do modelo base em 4 bits (nf4) só no treino. Em CPU (ensaio de fumaça)
+# a quantização é desligada, porque o bitsandbytes precisa de GPU.
+load_in_4bit = true
+quant_type = "nf4"
+double_quant = true
+compute_dtype = "float16"  # a T4 não tem bf16 nativo
+
+[lora]
+r = 16
+alpha = 32
+dropout = 0.05
+bias = "none"
+# Projeções de atenção e MLP. Nomes dos módulos do Qwen2 (Qwen2.5-Coder); valem também
+# para Qwen3 e SmolLM3 (mesma nomenclatura do Llama).
+target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+[data]
+train_path = "datasets/train.jsonl"
+# Fração do treino separada (por seed) só para a perda de validação.
+val_fraction = 0.05
+# 0 = todos os 10.448 pares do treino v2. Um número N > 0 sorteia N pares de train.jsonl
+# (antes da divisão treino/validação) mantendo a proporção de cada (nível, intenção).
+# Não é preciso: a rodada estimada fica em ~4,5 h (results/training-v2.md), abaixo das 6 h.
+max_train_examples = 0
+# v2: 1280 (a v1 usava 1152). Com o tokenizer do Qwen2.5, 47 dos 10.448 pares (todos de
+# `regra70_dois_periodos`, duas CTEs com a razão) passam de 1152 tokens; o maior tem 1.170
+# (prompt de 780-842 + SQL de até 356). Truncar cortaria o fim da SQL e o token de fim, e
+# descartar tiraria 39% dessa intenção. Com 1280 cabem todos; o lote é preenchido só até o
+# maior par do lote (média de 924 tokens), então o tempo por passo quase não muda.
+max_seq_len = 1280
+seed = 42
+
+[training]
+epochs = 2
+learning_rate = 2e-4
+lr_scheduler = "cosine"
+warmup_ratio = 0.03
+# Batch efetivo 16 = 4 por passo x 4 de acumulação. Com gradient checkpointing, 4
+# sequências de ~1.000 tokens cabem na T4 (16 GB); o pico de memória é o dos logits
+# (no máximo 4 x 1.280 x 151.936 do vocabulário; a v1 teve pico de 2,4 GiB). Se der falta de memória: 2 x 8.
+per_device_train_batch_size = 4
+gradient_accumulation_steps = 4
+per_device_eval_batch_size = 4
+gradient_checkpointing = true
+fp16 = true
+bf16 = false
+optim = "adamw_torch"
+weight_decay = 0.0
+max_grad_norm = 1.0
+# Perda só na resposta (a SQL e o token de fim de turno), não no prompt.
+completion_only_loss = true
+logging_steps = 10
+eval_steps = 100
+# Checkpoint intermediário (só o último fica), para não perder tudo se a sessão cair.
+save_steps = 200
