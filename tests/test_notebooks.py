@@ -17,6 +17,7 @@ KERNELS = {
     "predict": ("belasoares/tanque-cheio-predict", "03_predict.ipynb"),
     "finetune": ("belasoares/tanque-cheio-finetune", "02_finetune.ipynb"),
     "test-predict": ("belasoares/tanque-cheio-test-predict", "04_test_predict.ipynb"),
+    "large": ("belasoares/tanque-cheio-large", "05_large_baselines.ipynb"),
 }
 PARAMS = {
     "01_bakeoff.ipynb": {"REPO_REF", "DATASET", "LIMIT", "CANDIDATES", "OUT_DIR"},
@@ -39,6 +40,18 @@ PARAMS = {
         "DATASET",
         "LIMIT",
         "MAX_NEW_TOKENS",
+        "OUT_DIR",
+    },
+    "05_large_baselines.ipynb": {
+        "REPO_REF",
+        "MODELS",
+        "DATASET",
+        "LIMIT",
+        "MAX_NEW_TOKENS",
+        "RETRY",
+        "PART",
+        "TIME_BUDGET_32B_H",
+        "RESUME_DIR",
         "OUT_DIR",
     },
     "02_finetune.ipynb": {
@@ -169,7 +182,10 @@ def test_single_gpu_before_importing_torch(name):
     assert pin < first_torch
 
 
-@pytest.mark.parametrize("name", ["02_finetune.ipynb", "03_predict.ipynb", "04_test_predict.ipynb"])
+@pytest.mark.parametrize(
+    "name",
+    ["02_finetune.ipynb", "03_predict.ipynb", "04_test_predict.ipynb", "05_large_baselines.ipynb"],
+)
 def test_adapter_notebooks_drop_torchao_and_fail_fast(name):
     # A imagem do Kaggle traz torchao 0.10; o peft recusa carregar adapters com ele.
     cells = [source(c) for c in load_notebook(name)["cells"] if c["cell_type"] == "code"]
@@ -192,6 +208,7 @@ def locked_versions() -> dict[str, str]:
             {"transformers", "peft", "trl", "accelerate", "datasets", "bitsandbytes"},
         ),
         ("04_test_predict.ipynb", {"transformers", "peft", "accelerate"}),
+        ("05_large_baselines.ipynb", {"transformers", "peft", "accelerate", "bitsandbytes"}),
     ],
 )
 def test_pins_match_the_lock_used_by_the_cpu_smoke_test(name, required):
@@ -236,3 +253,86 @@ def test_test_predict_runs_base_and_ft_in_one_session():
     assert 'f"datasets/{DATASET}.jsonl"' in text
     assert "run-info__" in text and "repo_commit=REPO_COMMIT" in text
     assert "dev.jsonl" not in text and "PUSH_TO_HUB" not in text
+
+
+# --- 05_large_baselines (M14) -----------------------------------------------------
+
+LARGE = "05_large_baselines.ipynb"
+
+
+def exec_parameters(name: str) -> dict:
+    """Valores da 1ª célula, executada (MODELS usa TIME_BUDGET_32B_H)."""
+    first = next(c for c in load_notebook(name)["cells"] if c["cell_type"] == "code")
+    values: dict = {}
+    exec(source(first), {}, values)
+    return values
+
+
+def test_large_parameters_defaults():
+    params = exec_parameters(LARGE)
+    assert params["REPO_REF"] == "main"
+    assert params["DATASET"] == "dev2" and params["LIMIT"] is None
+    assert params["MAX_NEW_TOKENS"] == 384 and params["RETRY"] is True  # D31, D32
+    assert params["PART"] == "all" and params["RESUME_DIR"] is None
+    assert params["TIME_BUDGET_32B_H"] == 3 and params["DTYPE"] == "float16"
+    assert params["OUT_DIR"] == "/kaggle/working"
+
+
+def test_large_models_are_pinned_and_ordered():
+    models = exec_parameters(LARGE)["MODELS"]
+    ids = [(m["model_id"], m.get("adapter_id")) for m in models]
+    assert ids == [
+        ("Qwen/Qwen2.5-Coder-1.5B-Instruct", None),
+        ("Qwen/Qwen2.5-Coder-1.5B-Instruct", "belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora"),
+        ("Qwen/Qwen2.5-Coder-7B-Instruct", None),
+        ("Qwen/Qwen2.5-Coder-14B-Instruct", None),
+        ("Qwen/Qwen2.5-Coder-32B-Instruct", None),  # por último
+    ]
+    for m in models:
+        assert re.fullmatch(r"[0-9a-f]{40}", m["revision"]), m["model_id"]
+    # o 1,5B e o adapter são os mesmos do teste final do M7
+    test_params = parameters("04_test_predict.ipynb")
+    assert models[0]["revision"] == models[1]["revision"] == test_params["MODEL_REVISION"]
+    assert models[1]["adapter_revision"] == test_params["ADAPTER_REVISION"]
+    assert [m["quantization"] for m in models] == [None, None, "nf4", "nf4", "nf4"]  # D27
+    assert [m["gpus"] for m in models] == [1, 1, 1, 1, 2]
+    assert [m["part"] for m in models] == ["a", "a", "a", "a", "b"]
+    big = models[-1]
+    assert big["time_budget_h"] == 3 and set(big["max_memory"]) == {0, 1}
+    assert re.fullmatch(r"[0-9a-f]{40}", big["fallback"]["revision"])
+
+
+def test_large_notebook_does_not_pin_a_single_gpu():
+    # o 32B precisa das 2 T4: nada de CUDA_VISIBLE_DEVICES = "0" (regra 0.8 adaptada)
+    text = notebook_text(LARGE)
+    assert 'os.environ["CUDA_VISIBLE_DEVICES"]' not in text
+
+
+def test_large_notebook_flow():
+    text = notebook_text(LARGE)
+    assert "git+{REPO_URL}@{REPO_REF}" in text
+    assert 'REPO_URL = "https://github.com/belasoaress/tanque-cheio"' in text
+    assert 'os.environ["TANQUE_ROOT"] = REPO_DIR' in text
+    assert "test.jsonl" not in text  # o teste fica para o M17
+    assert 'f"datasets/{DATASET}.jsonl"' in text
+    assert "large.run_spec(" in text and "large.write_run_infos(" in text
+    assert "large.select_models(MODELS, PART)" in text
+    assert "retry=RETRY" in text and "max_new_tokens=MAX_NEW_TOKENS" in text
+    assert "torch.cuda.empty_cache()" in text and "gc.collect()" in text
+    assert "repo_commit=REPO_COMMIT" in text
+    cells = [source(c) for c in load_notebook(LARGE)["cells"] if c["cell_type"] == "code"]
+    build = next(i for i, c in enumerate(cells) if '"--from-parquet"' in c)
+    run = next(i for i, c in enumerate(cells) if "large.run_spec(" in c)
+    assert build < run and "coletas-2026-09.parquet" in cells[build]
+    for cell in load_notebook(LARGE)["cells"]:
+        if cell["cell_type"] == "code":
+            assert cell["outputs"] == [] and cell["execution_count"] is None
+
+
+def test_large_part_split_covers_every_model():
+    from tanque.infer import large
+
+    models = exec_parameters(LARGE)["MODELS"]
+    a, b = large.select_models(models, "a"), large.select_models(models, "b")
+    assert a + b == models
+    assert [large.system_of(m) for m in b] == ["base-qwen2.5-coder-32b-instruct"]
