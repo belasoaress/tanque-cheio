@@ -1,0 +1,35 @@
+{
+  "system": "ft-qwen2.5-coder-1.5b-instruct",
+  "split": "dev",
+  "path": "/kaggle/working/ft-qwen2.5-coder-1.5b-instruct__dev.jsonl",
+  "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "model_revision": "2e1fd397ee46e1388853d2af2c993145b0f1098a",
+  "model_revision_error": null,
+  "adapter_id": "/kaggle/working/adapter",
+  "dtype": "float16",
+  "hardware": "kaggle-t4",
+  "max_new_tokens": 256,
+  "chat_template_kwargs": {},
+  "system_suffix": "",
+  "system_merged_into_user": false,
+  "limit": null,
+  "load_s": 3.1,
+  "total_s": 412.9,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.21.0",
+    "peft": "0.21.2",
+    "accelerate": "1.15.0"
+  },
+  "summary": {
+    "n": 50,
+    "errors": 0,
+    "empty_sql": 0,
+    "hit_max_new_tokens": 0,
+    "p50_latency_ms": 8468,
+    "mean_input_tokens": 795.26
+  },
+  "repo_ref": "main",
+  "repo_commit": "0ccbf8352cc1d73c1843e08112f536b216156e2d",
+  "train_log": "train-log__ft-qwen2.5-coder-1.5b-instruct.json"
+}
