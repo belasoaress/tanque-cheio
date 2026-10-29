@@ -104,6 +104,9 @@ Se o status for `ERROR`, o log vem junto com
 
 ## Fine-tuning (M6): `02_finetune.ipynb`
 
+> Desde o M15 a 1ª célula vem com o padrão do treino v2 (`CONFIG =
+> "configs/train-v2.toml"`, dev2, retry); para refazer a v1, veja a seção "Treino v2".
+
 O notebook lê `configs/train.toml` (modelo base, QLoRA, LoRA, lr, épocas...), treina o
 adapter com `tanque.train.finetune.run_finetune` e gera as previsões do **dev** com o
 adapter pela mesma `local.run_predictions` do `03_predict` (sistema `ft-<modelo>`). O
@@ -115,10 +118,10 @@ Hiperparâmetros, estimativa de tempo e o registro de cada rodada: `results/trai
 > Isabela. Os passos abaixo são para ela.
 
 1. **(Opcional, recomendado) Medir o tempo.** Na 1ª célula, `MAX_STEPS = 30` e
-   `DEV_LIMIT = 3`; depois push (passo 2). Leva ~10 min. No log, a linha
+   `EVAL_LIMIT = 3`; depois push (passo 2). Leva ~10 min. No log, a linha
    "Projeção da rodada completa" diz quantas horas a rodada inteira leva. Se passar de
    6 h, reduza `max_train_examples` (ex.: 4000) ou `epochs = 1` em `configs/train.toml`,
-   commite e siga. Volte para `MAX_STEPS = None` e `DEV_LIMIT = None`.
+   commite e siga. Volte para `MAX_STEPS = None` e `EVAL_LIMIT = None`.
 2. **Enviar e executar** (cria o kernel privado na primeira vez):
 
    ```powershell
@@ -328,6 +331,80 @@ está em `kaggle-large/*.log`. Se você dividiu em `PART = "a"` e `"b"`, faça o
 célula, `RESUME_DIR = "/kaggle/input/tanque-cheio-large"` (confira o caminho no painel
 *Input*). *Save & Run All*: os itens já prontos são pulados, e só o que falta roda.
 Volte depois para `RESUME_DIR = None`.
+
+## Treino v2 (M15): `02_finetune.ipynb` com `configs/train-v2.toml`
+
+O mesmo notebook do M6, agora com padrão v2 na 1ª célula: `CONFIG =
+"configs/train-v2.toml"` (mesmos hiperparâmetros da v1, sistema
+`ft2-qwen2.5-coder-1.5b-instruct`), treino com o `datasets/train.jsonl` v2 (templates
+novos para os erros do ft-v1 no dev2; ver `results/training-v2.md`) e, depois do treino,
+previsões no **dev2** com `MAX_NEW_TOKENS = 384` (D31) e `RETRY = True` (D32). O banco é
+montado do snapshot dentro do notebook (~6 s), para a nova tentativa executar as SQLs.
+Defesas do M6 mantidas: `CUDA_VISIBLE_DEVICES = "0"` antes do torch, `torchao`
+desinstalado e `is_torchao_available()` checado.
+
+**Kernel novo:** `belasoares/tanque-cheio-finetune-v2`
+(`notebooks/kaggle/finetune-v2/`), para não criar uma versão nova do notebook do v1
+(`belasoares/tanque-cheio-finetune`), que fica como está. **Não** rode
+`kaggle kernels push -p notebooks/kaggle/finetune`: com o padrão novo da 1ª célula, ele
+treinaria o v2 por cima do kernel do v1.
+
+Saída (`/kaggle/working/`): `adapter/`, `train-log__ft2-qwen2.5-coder-1.5b-instruct.json`,
+`ft2-qwen2.5-coder-1.5b-instruct__dev2.jsonl`,
+`ft2-qwen2.5-coder-1.5b-instruct+retry__dev2.jsonl` e os dois `run-info__...json`.
+Tempo estimado: ~5 h de GPU (treino) + ~10 min (previsões); a conta está em
+`results/training-v2.md`.
+
+### Passos 👤 (PowerShell, na raiz do repositório)
+
+> **Regra 5:** executar no Kaggle e publicar no HF exigem a aprovação da Isabela.
+
+```powershell
+# 1. main atualizada (com o M15 já no merge)
+git switch main
+git pull
+
+# 2. (opcional, recomendado) ensaio de ~15 min: MAX_STEPS = 30 e EVAL_LIMIT = 3 na 1ª
+#    célula do notebooks/02_finetune.ipynb, push (passo 3), conferir no log a linha
+#    "Projeção da rodada completa", e voltar para None (sem commitar o ensaio).
+
+# 3. enviar e executar (cria o kernel privado belasoares/tanque-cheio-finetune-v2 na 1ª vez)
+kaggle kernels push -p notebooks/kaggle/finetune-v2
+
+# 4. acompanhar até COMPLETE (ou ERROR); repita de tempos em tempos (~5 h)
+kaggle kernels status belasoares/tanque-cheio-finetune-v2
+
+# 5. baixar a saída (o adapter vem junto) numa pasta fora do git
+kaggle kernels output belasoares/tanque-cheio-finetune-v2 -p kaggle-ft2 -o
+Get-ChildItem kaggle-ft2
+
+# 6. copiar as previsões, os run-info e o log de treino para results/
+Copy-Item kaggle-ft2/ft2-*__dev2.jsonl, kaggle-ft2/run-info__ft2-*__dev2.json results/predictions/
+New-Item -ItemType Directory -Force results/training | Out-Null
+Copy-Item kaggle-ft2/train-log__ft2-*.json results/training/
+
+# 7. branch, commit e push (sem a pasta kaggle-ft2/ e sem o adapter)
+git switch -c m15-run1
+git add results/predictions/ft2-*__dev2.jsonl results/predictions/run-info__ft2-*__dev2.json results/training/train-log__ft2-*.json
+git commit -m "chore(results): previsões do ft-v2 no dev2 e log do treino (M15, rodada 1)"
+git push -u origin m15-run1
+```
+
+Depois do push, abra o PR (ou avise o agente): a pontuação no dev2, a comparação com o
+ft-v1 (McNemar) e o registro da rodada em `results/training-v2.md` são feitos pelo
+agente; `results/metrics.json` é conferido pelo CI. Se o status for `ERROR`, o log está
+em `kaggle-ft2/*.log`.
+
+**8. Publicar o adapter v2 no HF — só depois da avaliação no dev2** (e só se o ft-v2
+superar o ft-v1; senão o ft-v1 continua sendo o modelo final, regra do M15):
+
+```powershell
+uv run hf auth whoami   # deve mostrar belasoares (se não: uv run hf auth login)
+uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2 kaggle-ft2/adapter .
+```
+
+O `hf upload` cria o repo se ele não existir. Anote o commit que ele imprime: é o
+`ADAPTER_REVISION` do ft-v2 no teste final (M17).
 
 ## Publicação (M8)
 

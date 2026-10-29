@@ -16,6 +16,8 @@ KERNELS = {
     "bakeoff": ("belasoares/tanque-cheio-bakeoff", "01_bakeoff.ipynb"),
     "predict": ("belasoares/tanque-cheio-predict", "03_predict.ipynb"),
     "finetune": ("belasoares/tanque-cheio-finetune", "02_finetune.ipynb"),
+    # v2 (M15): kernel novo, para não sobrescrever o notebook do v1
+    "finetune-v2": ("belasoares/tanque-cheio-finetune-v2", "02_finetune.ipynb"),
     "test-predict": ("belasoares/tanque-cheio-test-predict", "04_test_predict.ipynb"),
     "large": ("belasoares/tanque-cheio-large", "05_large_baselines.ipynb"),
 }
@@ -58,6 +60,10 @@ PARAMS = {
         "REPO_REF",
         "CONFIG",
         "MAX_STEPS",
+        "EVAL_DATASET",
+        "EVAL_LIMIT",
+        "MAX_NEW_TOKENS",
+        "RETRY",
         "HF_REPO",
         "PUSH_TO_HUB",
         "OUT_DIR",
@@ -149,7 +155,10 @@ def parameters(name: str) -> dict:
 def test_finetune_parameters_defaults():
     params = parameters("02_finetune.ipynb")
     assert params["REPO_REF"] == "main"
-    assert params["CONFIG"] == "configs/train.toml"
+    # v2 (M15): train-v2.toml (sistema ft2-...), previsões no dev2 com 384 tokens e retry
+    assert params["CONFIG"] == "configs/train-v2.toml"
+    assert params["EVAL_DATASET"] == "datasets/dev2.jsonl" and params["EVAL_LIMIT"] is None
+    assert params["MAX_NEW_TOKENS"] == 384 and params["RETRY"] is True  # D31, D32
     assert params["PUSH_TO_HUB"] is False  # publicar exige aprovação (regra 5)
     assert params["HF_REPO"] is None
     assert params["MAX_STEPS"] is None
@@ -163,8 +172,16 @@ def test_finetune_notebook_uses_the_package_and_never_the_test_set():
     assert 'os.environ["TANQUE_ROOT"] = REPO_DIR' in text
     assert "finetune.run_finetune(" in text
     assert "local.run_predictions(" in text and 'adapter_id=info["adapter_dir"]' in text
-    assert '"datasets/dev.jsonl"' in text
+    assert "config.resolve_path(EVAL_DATASET)" in text
     assert "test.jsonl" not in text
+    assert "max_new_tokens=MAX_NEW_TOKENS" in text and "retry=RETRY" in text
+    assert "large.write_run_infos(" in text and "config_file=CONFIG" in text
+    cells = [
+        source(c) for c in load_notebook("02_finetune.ipynb")["cells"] if c["cell_type"] == "code"
+    ]
+    build = next(i for i, c in enumerate(cells) if '"--from-parquet"' in c)
+    predict = next(i for i, c in enumerate(cells) if "local.run_predictions(" in c)
+    assert build < predict and "coletas-2026-09.parquet" in cells[build]
     assert 'UserSecretsClient().get_secret("HF_TOKEN")' in text
     assert "if PUSH_TO_HUB:" in text
     for cell in load_notebook("02_finetune.ipynb")["cells"]:

@@ -1,328 +1,413 @@
 {
   "requests_with_pairs": 0,
-  "raw_pairs": 10000,
-  "valid_after_execution": 10000,
-  "final": 8217,
+  "raw_pairs": 13000,
+  "valid_after_execution": 13000,
+  "final": 10448,
   "discarded_by_reason": {
-    "vazamento": 1783
+    "vazamento": 2552
   },
   "leakage_threshold": 85,
   "dedupe_mode": "exact",
   "check_repeated_results": false,
   "by_intent": {
     "acima_media_nacional": {
-      "raw": 263,
-      "final": 241,
-      "vazamento": 22
+      "raw": 215,
+      "final": 197,
+      "vazamento": 18
+    },
+    "acumulado": {
+      "raw": 162,
+      "final": 144,
+      "vazamento": 18
     },
     "amplitude_local": {
-      "raw": 250,
-      "final": 215,
+      "raw": 251,
+      "final": 216,
       "vazamento": 35
     },
     "amplitude_por_uf": {
-      "raw": 250,
-      "final": 223,
+      "raw": 246,
+      "final": 219,
       "vazamento": 27
     },
     "coletas_por_mes": {
-      "raw": 250,
-      "final": 203,
-      "vazamento": 47
+      "raw": 247,
+      "final": 201,
+      "vazamento": 46
     },
     "compara_bandeiras": {
-      "raw": 250,
-      "final": 177,
-      "vazamento": 73
+      "raw": 246,
+      "final": 174,
+      "vazamento": 72
+    },
+    "compara_produtos_grupo": {
+      "raw": 215,
+      "final": 196,
+      "vazamento": 19
     },
     "conta_coletas": {
-      "raw": 250,
-      "final": 220,
+      "raw": 251,
+      "final": 221,
       "vazamento": 30
     },
     "conta_municipios": {
-      "raw": 250,
-      "final": 250
+      "raw": 251,
+      "final": 251
     },
     "conta_postos_bandeira": {
-      "raw": 250,
-      "final": 194,
+      "raw": 251,
+      "final": 195,
       "vazamento": 56
     },
     "conta_postos_local": {
-      "raw": 250,
-      "final": 215,
+      "raw": 251,
+      "final": 216,
       "vazamento": 35
     },
     "datas_coleta": {
-      "raw": 250,
-      "final": 249,
+      "raw": 251,
+      "final": 250,
       "vazamento": 1
     },
     "diferenca_produtos_uf": {
-      "raw": 263,
-      "final": 252,
-      "vazamento": 11
+      "raw": 215,
+      "final": 206,
+      "vazamento": 9
     },
     "extremo_preco": {
-      "raw": 250,
-      "final": 211,
+      "raw": 251,
+      "final": 212,
       "vazamento": 39
     },
+    "filtro_contagem": {
+      "raw": 247,
+      "final": 189,
+      "vazamento": 58
+    },
     "janela_ranking_por_grupo": {
-      "raw": 198,
-      "final": 173,
-      "vazamento": 25
+      "raw": 162,
+      "final": 141,
+      "vazamento": 21
     },
     "janela_variacao_mensal": {
-      "raw": 198,
-      "final": 138,
-      "vazamento": 60
+      "raw": 162,
+      "final": 112,
+      "vazamento": 50
     },
     "lado_a_lado_produtos": {
-      "raw": 250,
-      "final": 153,
-      "vazamento": 97
+      "raw": 246,
+      "final": 140,
+      "vazamento": 106
     },
     "media_bandeira": {
-      "raw": 250,
-      "final": 160,
+      "raw": 251,
+      "final": 161,
       "vazamento": 90
     },
     "media_capitais": {
-      "raw": 250,
-      "final": 203,
+      "raw": 251,
+      "final": 204,
       "vazamento": 47
     },
+    "media_da_serie": {
+      "raw": 215,
+      "final": 163,
+      "vazamento": 52
+    },
     "media_nacional_periodo": {
-      "raw": 250,
-      "final": 180,
+      "raw": 251,
+      "final": 181,
       "vazamento": 70
     },
     "media_por_produto": {
-      "raw": 250,
-      "final": 212,
+      "raw": 246,
+      "final": 208,
       "vazamento": 38
     },
     "media_por_regiao": {
-      "raw": 250,
-      "final": 177,
-      "vazamento": 73
+      "raw": 246,
+      "final": 174,
+      "vazamento": 72
     },
     "media_produto_municipio": {
-      "raw": 250,
+      "raw": 251,
       "final": 189,
-      "vazamento": 61
+      "vazamento": 62
     },
     "media_produto_regiao": {
-      "raw": 250,
-      "final": 183,
+      "raw": 251,
+      "final": 184,
       "vazamento": 67
     },
     "media_produto_uf": {
-      "raw": 250,
-      "final": 175,
+      "raw": 251,
+      "final": 176,
       "vazamento": 75
     },
     "media_ultimo_mes": {
-      "raw": 250,
-      "final": 166,
+      "raw": 251,
+      "final": 167,
       "vazamento": 84
     },
     "municipios_acima_limite": {
-      "raw": 250,
-      "final": 242,
-      "vazamento": 8
+      "raw": 246,
+      "final": 229,
+      "vazamento": 17
+    },
+    "nunca_coleta": {
+      "raw": 215,
+      "final": 172,
+      "vazamento": 43
+    },
+    "participacao_pct": {
+      "raw": 215,
+      "final": 184,
+      "vazamento": 31
+    },
+    "pico_por_grupo": {
+      "raw": 162,
+      "final": 130,
+      "vazamento": 32
+    },
+    "posicao_ranking": {
+      "raw": 162,
+      "final": 105,
+      "vazamento": 57
+    },
+    "postos_bairro": {
+      "raw": 126,
+      "final": 114,
+      "vazamento": 12
+    },
+    "postos_condicao_preco": {
+      "raw": 246,
+      "final": 231,
+      "vazamento": 15
     },
     "postos_mais_baratos": {
-      "raw": 250,
-      "final": 236,
+      "raw": 246,
+      "final": 232,
       "vazamento": 14
     },
     "postos_por_bandeira": {
-      "raw": 250,
-      "final": 180,
-      "vazamento": 70
+      "raw": 247,
+      "final": 179,
+      "vazamento": 68
     },
     "premio_bandeira": {
-      "raw": 263,
-      "final": 200,
-      "vazamento": 63
+      "raw": 215,
+      "final": 163,
+      "vazamento": 52
     },
     "presenca_bandeira": {
-      "raw": 250,
-      "final": 228,
+      "raw": 246,
+      "final": 224,
       "vazamento": 22
     },
     "ranking_bairros": {
-      "raw": 250,
-      "final": 237,
+      "raw": 247,
+      "final": 234,
       "vazamento": 13
     },
     "ranking_bandeiras": {
-      "raw": 250,
-      "final": 224,
+      "raw": 247,
+      "final": 221,
       "vazamento": 26
     },
     "ranking_capitais": {
-      "raw": 250,
-      "final": 195,
+      "raw": 246,
+      "final": 191,
       "vazamento": 55
     },
     "ranking_municipios": {
-      "raw": 250,
-      "final": 237,
-      "vazamento": 13
+      "raw": 246,
+      "final": 213,
+      "vazamento": 33
     },
     "ranking_uf_preco": {
-      "raw": 250,
-      "final": 189,
-      "vazamento": 61
+      "raw": 246,
+      "final": 187,
+      "vazamento": 59
     },
     "razao_mensal": {
-      "raw": 263,
-      "final": 220,
-      "vazamento": 43
+      "raw": 215,
+      "final": 182,
+      "vazamento": 33
+    },
+    "razao_por_grupo": {
+      "raw": 215,
+      "final": 114,
+      "vazamento": 101
+    },
+    "regiao_vs_estado": {
+      "raw": 215,
+      "final": 158,
+      "vazamento": 57
+    },
+    "regra70_dois_periodos": {
+      "raw": 215,
+      "final": 119,
+      "vazamento": 96
     },
     "regra70_todos_meses": {
-      "raw": 263,
-      "final": 213,
-      "vazamento": 50
+      "raw": 215,
+      "final": 169,
+      "vazamento": 46
     },
     "regra70_ufs": {
-      "raw": 263,
-      "final": 215,
-      "vazamento": 48
+      "raw": 215,
+      "final": 179,
+      "vazamento": 36
     },
     "serie_mensal": {
-      "raw": 250,
-      "final": 194,
+      "raw": 247,
+      "final": 191,
       "vazamento": 56
     },
+    "serie_trimestral": {
+      "raw": 246,
+      "final": 150,
+      "vazamento": 96
+    },
     "subiu_no_periodo": {
-      "raw": 263,
-      "final": 244,
-      "vazamento": 19
+      "raw": 215,
+      "final": 200,
+      "vazamento": 15
+    },
+    "tanto_quanto": {
+      "raw": 215,
+      "final": 195,
+      "vazamento": 20
+    },
+    "todos_os": {
+      "raw": 215,
+      "final": 167,
+      "vazamento": 48
+    },
+    "variacao_grupos": {
+      "raw": 215,
+      "final": 160,
+      "vazamento": 55
     },
     "variacao_periodos": {
-      "raw": 263,
-      "final": 204,
-      "vazamento": 59
+      "raw": 215,
+      "final": 168,
+      "vazamento": 47
     }
   },
   "generator": "templates",
   "seed": 42,
-  "requested": 10000,
-  "generated": 10000,
+  "requested": 13000,
+  "generated": 13000,
   "generation_rejected_by_reason": {
-    "repetido": 5549,
-    "empate": 943,
-    "zero": 627,
-    "vazio": 409,
-    "poucas_linhas": 358,
-    "nulo": 325,
-    "sinal": 158,
-    "sem_parametro": 33,
-    "muitas_linhas": 29
+    "repetido": 6154,
+    "empate": 948,
+    "vazio": 771,
+    "zero": 768,
+    "poucas_linhas": 374,
+    "nulo": 339,
+    "sinal": 148,
+    "sem_parametro": 65,
+    "muitas_linhas": 36
   },
   "generation_by_intent": {
     "media_produto_uf": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 13,
         "repetido": 27
       }
     },
     "media_produto_municipio": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 27,
         "repetido": 1
       }
     },
     "media_produto_regiao": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "repetido": 168
       }
     },
     "media_nacional_periodo": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
-        "repetido": 740
+        "repetido": 744
       }
     },
     "extremo_preco": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 9,
         "repetido": 12
       }
     },
     "conta_postos_local": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
-        "repetido": 130,
+        "repetido": 133,
         "zero": 7
       }
     },
     "conta_coletas": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "repetido": 34,
         "zero": 11
       }
     },
     "conta_postos_bandeira": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "repetido": 322,
         "zero": 267
       }
     },
     "media_bandeira": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 117,
         "repetido": 13
       }
     },
     "media_capitais": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 2,
         "repetido": 103
       }
     },
     "conta_municipios": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "repetido": 161,
         "zero": 5
       }
     },
     "media_ultimo_mes": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 27,
-        "repetido": 569
+        "repetido": 573
       }
     },
     "amplitude_local": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 14,
         "repetido": 33,
@@ -330,8 +415,8 @@
       }
     },
     "datas_coleta": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 251,
+      "generated": 251,
       "rejected": {
         "nulo": 13,
         "repetido": 1,
@@ -339,25 +424,25 @@
       }
     },
     "ranking_uf_preco": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
         "repetido": 42
       }
     },
     "ranking_municipios": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "empate": 4,
-        "poucas_linhas": 5,
+        "empate": 2,
+        "poucas_linhas": 7,
         "repetido": 7,
-        "vazio": 2
+        "vazio": 4
       }
     },
     "ranking_bandeiras": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 247,
+      "generated": 247,
       "rejected": {
         "empate": 6,
         "poucas_linhas": 41,
@@ -366,85 +451,85 @@
       }
     },
     "media_por_regiao": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "repetido": 148
+        "repetido": 146
       }
     },
     "serie_mensal": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 247,
+      "generated": 247,
       "rejected": {
         "repetido": 44,
         "vazio": 11
       }
     },
     "media_por_produto": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "repetido": 30,
+        "repetido": 29,
         "vazio": 1
       }
     },
     "ranking_capitais": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
         "empate": 4,
-        "poucas_linhas": 2,
-        "repetido": 30
+        "poucas_linhas": 1,
+        "repetido": 33
       }
     },
     "compara_bandeiras": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "poucas_linhas": 153,
+        "poucas_linhas": 147,
         "repetido": 1,
         "vazio": 19
       }
     },
     "postos_por_bandeira": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 247,
+      "generated": 247,
       "rejected": {
-        "empate": 107,
-        "poucas_linhas": 60,
-        "repetido": 561
+        "empate": 103,
+        "poucas_linhas": 59,
+        "repetido": 542
       }
     },
     "municipios_acima_limite": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "muitas_linhas": 29,
-        "repetido": 3,
-        "sem_parametro": 8
+        "muitas_linhas": 26,
+        "repetido": 1,
+        "sem_parametro": 10
       }
     },
     "postos_mais_baratos": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "empate": 271,
-        "poucas_linhas": 33,
+        "empate": 263,
+        "poucas_linhas": 31,
         "repetido": 4,
         "vazio": 32
       }
     },
     "coletas_por_mes": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 247,
+      "generated": 247,
       "rejected": {
-        "repetido": 35,
+        "repetido": 34,
         "vazio": 2
       }
     },
     "ranking_bairros": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 247,
+      "generated": 247,
       "rejected": {
         "empate": 87,
         "poucas_linhas": 2,
@@ -453,124 +538,272 @@
       }
     },
     "amplitude_por_uf": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
         "empate": 63,
         "poucas_linhas": 3,
-        "repetido": 74,
+        "repetido": 72,
         "vazio": 5
       }
     },
     "presenca_bandeira": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "empate": 400,
-        "poucas_linhas": 22,
-        "repetido": 1324,
-        "zero": 199
+        "empate": 385,
+        "poucas_linhas": 21,
+        "repetido": 1264,
+        "zero": 193
       }
     },
     "lado_a_lado_produtos": {
-      "quota": 250,
-      "generated": 250,
+      "quota": 246,
+      "generated": 246,
       "rejected": {
-        "nulo": 26,
-        "repetido": 56
+        "nulo": 23,
+        "poucas_linhas": 3,
+        "repetido": 54
       }
     },
     "regra70_ufs": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
         "nulo": 1,
-        "repetido": 153,
-        "vazio": 47,
-        "zero": 7
+        "repetido": 108,
+        "vazio": 38,
+        "zero": 5
       }
     },
     "regra70_todos_meses": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
-        "repetido": 301,
-        "vazio": 179,
-        "zero": 105
+        "repetido": 206,
+        "vazio": 127,
+        "zero": 73
       }
     },
     "variacao_periodos": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
-        "nulo": 9,
-        "repetido": 36,
-        "sinal": 32,
-        "zero": 2
+        "nulo": 4,
+        "repetido": 19,
+        "sinal": 24
       }
     },
     "razao_mensal": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
         "nulo": 2,
-        "repetido": 79,
-        "vazio": 71
+        "repetido": 47,
+        "vazio": 59
       }
     },
     "acima_media_nacional": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
-        "repetido": 92,
-        "vazio": 2
+        "repetido": 61,
+        "vazio": 1
       }
     },
     "subiu_no_periodo": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
         "repetido": 1,
-        "sem_parametro": 19,
+        "sem_parametro": 15,
         "vazio": 12,
-        "zero": 12
+        "zero": 8
       }
     },
     "premio_bandeira": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
-        "nulo": 65,
-        "poucas_linhas": 32,
-        "repetido": 13,
-        "sinal": 89,
-        "vazio": 8
+        "nulo": 55,
+        "poucas_linhas": 26,
+        "repetido": 6,
+        "sinal": 73,
+        "vazio": 6
       }
     },
     "diferenca_produtos_uf": {
-      "quota": 263,
-      "generated": 263,
+      "quota": 215,
+      "generated": 215,
       "rejected": {
-        "repetido": 119,
-        "sem_parametro": 4,
-        "sinal": 37
+        "repetido": 76,
+        "sem_parametro": 2,
+        "sinal": 19
       }
     },
     "janela_variacao_mensal": {
-      "quota": 198,
-      "generated": 198,
+      "quota": 162,
+      "generated": 162,
       "rejected": {
-        "repetido": 15,
-        "sem_parametro": 2
+        "repetido": 9,
+        "sem_parametro": 1
       }
     },
     "janela_ranking_por_grupo": {
-      "quota": 198,
-      "generated": 198,
+      "quota": 162,
+      "generated": 162,
       "rejected": {
         "empate": 1,
-        "poucas_linhas": 5,
-        "repetido": 53
+        "poucas_linhas": 4,
+        "repetido": 37
+      }
+    },
+    "postos_bairro": {
+      "quota": 126,
+      "generated": 126,
+      "rejected": {
+        "nulo": 12,
+        "repetido": 1
+      }
+    },
+    "filtro_contagem": {
+      "quota": 247,
+      "generated": 247,
+      "rejected": {
+        "muitas_linhas": 10,
+        "repetido": 46,
+        "sem_parametro": 11
+      }
+    },
+    "serie_trimestral": {
+      "quota": 246,
+      "generated": 246,
+      "rejected": {
+        "repetido": 152,
+        "vazio": 2
+      }
+    },
+    "postos_condicao_preco": {
+      "quota": 246,
+      "generated": 246,
+      "rejected": {
+        "repetido": 3,
+        "sem_parametro": 9,
+        "zero": 12
+      }
+    },
+    "tanto_quanto": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 2,
+        "vazio": 2,
+        "zero": 12
+      }
+    },
+    "todos_os": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 41,
+        "sem_parametro": 5,
+        "vazio": 34
+      }
+    },
+    "participacao_pct": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "empate": 17,
+        "repetido": 239,
+        "zero": 21
+      }
+    },
+    "regiao_vs_estado": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "nulo": 15,
+        "repetido": 34,
+        "vazio": 4,
+        "zero": 2
+      }
+    },
+    "media_da_serie": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "nulo": 1,
+        "repetido": 13,
+        "vazio": 4,
+        "zero": 7
+      }
+    },
+    "nunca_coleta": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 17,
+        "vazio": 127,
+        "zero": 59
+      }
+    },
+    "variacao_grupos": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 14,
+        "sinal": 32
+      }
+    },
+    "regra70_dois_periodos": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 57,
+        "vazio": 198,
+        "zero": 74
+      }
+    },
+    "compara_produtos_grupo": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "repetido": 41,
+        "vazio": 64
+      }
+    },
+    "razao_por_grupo": {
+      "quota": 215,
+      "generated": 215,
+      "rejected": {
+        "nulo": 4,
+        "poucas_linhas": 29,
+        "repetido": 177
+      }
+    },
+    "posicao_ranking": {
+      "quota": 162,
+      "generated": 162,
+      "rejected": {
+        "repetido": 5,
+        "sem_parametro": 12
+      }
+    },
+    "acumulado": {
+      "quota": 162,
+      "generated": 162,
+      "rejected": {
+        "repetido": 24,
+        "vazio": 1
+      }
+    },
+    "pico_por_grupo": {
+      "quota": 162,
+      "generated": 162,
+      "rejected": {
+        "empate": 17,
+        "repetido": 106
       }
     }
   },

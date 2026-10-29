@@ -137,7 +137,7 @@ def test_stats_report(m4_env, tmp_path):
     )
     assert out.read_text(encoding="utf-8") == text
     assert "**Pares no treino:** 2" in text
-    assert "| facil | 2 | 100.0% | 35% | não |" in text
+    assert "| facil | 2 | 100.0% | 28% | não |" in text  # alvo v2 (M15)
     assert "| `media_produto_municipio` | facil | 2 |" in text
     assert "| `vazamento` | 1 | 20.0% |" in text
     assert "Chamadas cobradas: 1" in text

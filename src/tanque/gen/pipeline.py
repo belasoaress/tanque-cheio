@@ -192,10 +192,21 @@ def render_stats(
     hard = by_level.get("dificil", 0)
 
     lines = [
-        "# Estatísticas do dataset de treino (M4)",
+        "# Estatísticas do dataset de treino (M4; v2 no M15)",
         "",
         "Gerado por `tanque gen stats`. Não edite à mão.",
         "",
+        "Treino v2 (M15, D34): as 40 intenções da v1 mais 17 novas, ligadas aos erros do "
+        "ft-v1 no dev2 (`results/training-v2.md`); distribuição alvo 28/36/36 "
+        "(a v1 tinha 35/40/25 e 8.217 pares).",
+        "",
+    ]
+    if summary and summary.get("generator") == "templates":
+        lines += [
+            f"- **Comando:** `uv run tanque gen templates --n {summary.get('requested')} "
+            f"--seed {summary.get('seed')}`",
+        ]
+    lines += [
         f"- **Pares no treino:** {total} (`datasets/train.jsonl`; meta do plano: ≥ 3.000)",
         f"- **Com função de janela:** {windows} ({_pct(windows, hard)} do nível difícil; "
         "teto de 20%)",

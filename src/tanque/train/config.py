@@ -33,6 +33,20 @@ def with_overrides(cfg: dict[str, Any], overrides: dict[str, dict[str, Any]]) ->
     return new
 
 
+def system_name(cfg: dict[str, Any]) -> str:
+    """Nome do sistema treinado: `<system_prefix>-<modelo>` (5.3 v2).
+
+    `[model].system_prefix` vale `ft` por omissão (v1, `configs/train.toml`) e `ft2` no
+    treino v2 (`configs/train-v2.toml`, M15): `ft2-qwen2.5-coder-1.5b-instruct`.
+    """
+    from tanque.infer.local import model_slug
+
+    prefix = cfg["model"].get("system_prefix") or "ft"
+    if prefix not in ("ft", "ft2"):
+        raise ValueError(f"system_prefix deve ser 'ft' ou 'ft2' (5.3 v2), não {prefix!r}")
+    return f"{prefix}-{model_slug(cfg['model']['base_model'])}"
+
+
 def effective_batch_size(cfg: dict[str, Any], n_devices: int = 1) -> int:
     t = cfg["training"]
     return t["per_device_train_batch_size"] * t["gradient_accumulation_steps"] * n_devices

@@ -36,6 +36,7 @@ from typing import Any
 from tanque import config
 from tanque.eval.score import read_jsonl
 from tanque.infer import local
+from tanque.train import config as train_config
 from tanque.train import format as fmt
 
 VERSION_PACKAGES = (
@@ -235,7 +236,7 @@ def run_finetune(
     adapter_dir = out_dir / "adapter"
     ckpt_dir = out_dir / "checkpoints"
     base_model = cfg["model"]["base_model"]
-    system = local.system_name(base_model, adapter_id="adapter")
+    system = train_config.system_name(cfg)  # ft-<modelo> (v1) ou ft2-<modelo> (v2)
     started = time.time()
 
     tokenizer = load_tokenizer(cfg)
@@ -356,6 +357,7 @@ def model_card(info: dict[str, Any], dev_ex: str = "_(pendente)_") -> str:
     """Model card provisório do adapter (README.md do repo no HF)."""
     cfg = info["config"]
     lora, t = cfg["lora"], cfg["training"]
+    config_file = info.get("config_file", "configs/train.toml")
     return f"""---
 base_model: {info["base_model"]}
 library_name: peft
@@ -377,8 +379,8 @@ Projeto: https://github.com/belasoaress/tanque-cheio. **Card provisório (M6).**
   {t["per_device_train_batch_size"] * t["gradient_accumulation_steps"]}, seed
   {cfg["data"]["seed"]}; perda só na SQL. Hardware: {info["hardware"]},
   {round(info["train_seconds"] / 3600, 2)} h.
-- EX no dev (50 perguntas): {dev_ex}.
-- Código: commit `{info.get("repo_commit", "?")}` do repositório; `configs/train.toml`.
+- EX no {info.get("eval_split", "dev (50 perguntas)")}: {dev_ex}.
+- Código: commit `{info.get("repo_commit", "?")}` do repositório; `{config_file}`.
 
 Uso: o prompt é o de `tanque.prompting.build_prompt` pelo chat template do modelo base;
 a resposta é só a SQL. Dados: série histórica de preços de combustíveis da ANP.
