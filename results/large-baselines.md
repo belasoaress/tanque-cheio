@@ -1,11 +1,44 @@
 # Modelos maiores no dev2 (M14)
 
-> **Esqueleto.** As previsões ainda não existem: a Isabela roda o
-> `notebooks/05_large_baselines.ipynb` no Kaggle (passos em `notebooks/README.md`, seção
-> "Modelos maiores (M14)"). A tabela de resultados é **gerada pelo comando de relatório
-> do M12** (`uv run tanque eval report`, com EX, EX tolerante, IC 95%, latência,
-> memória e custo) a partir de `results/predictions/*__dev2.jsonl`; os números não
-> devem ser digitados à mão aqui. Até lá, as células ficam com "—".
+> Executado no Kaggle (2 T4) em 30/10/2026; os 5 sistemas rodaram as 113 perguntas,
+> sem cortes por tempo e com os checkpoints oficiais (`model_source: official`). A tabela
+> completa, com IC 95%, EX tolerante, latência, custo e comparações pareadas, é gerada
+> por `uv run tanque eval report` e está em [`results/report.md`](report.md), seção
+> "Referência: dev2". Os números abaixo são cópia dela.
+
+## Resultado (dev2, 113 perguntas, sem nova tentativa)
+
+| Sistema | Parâmetros | EX | IC 95% | EX tolerante | p50 | Memória de GPU | GPUs | US$ / 1.000* |
+|---|---|---|---|---|---|---|---|---|
+| 1,5B base | 1,5 B | 11,5% | 6,2–17,7% | 12,4% | 2,8 s | 3,1 GiB | 1 | 0,31 |
+| 7B base (nf4) | 7,6 B | 31,9% | 23,9–40,7% | 38,9% | 9,5 s | 5,7 GiB | 1 | 0,93 |
+| 14B base (nf4) | 14,8 B | 40,7% | 31,9–49,6% | 45,1% | 17,4 s | 10,2 GiB | 1 | 1,90 |
+| 32B base (nf4) | 32,8 B | 72,6% | 63,7–80,5% | 76,1% | 29,1 s | 10,8 GiB/GPU | 2 | 6,26 |
+| **1,5B ajustado (ft-v1)** | 1,5 B | **74,3%** | 66,4–82,3% | **78,8%** | **4,1 s** | **3,1 GiB** | 1 | **0,40** |
+
+\* Estimativa: latência média × GPUs × US$ 0,35/h por T4.
+
+**Leitura.**
+
+- O 1,5B ajustado empata com o 32B sem ajuste: 74,3% contra 72,6%, sem diferença
+  significativa (McNemar p = 0,86; 15 perguntas só o 32B acerta, 17 só o ajustado). O
+  ajustado faz isso com 1/21 dos parâmetros, ~7× menos latência (4,1 s contra 29,1 s),
+  1 GPU em vez de 2 e ~15× menos custo por pergunta.
+- O ajustado supera com folga o 7B (+42,5 p.p.) e o 14B (+33,6 p.p.), ambos com p < 0,001.
+- A autocorreção (D32) ajuda os modelos sem ajuste, que erram mais a sintaxe: +6,2 p.p.
+  no 7B (p = 0,016), +5,3 no 14B (p = 0,031), +1,8 no 32B (n.s.). No ajustado, ela não
+  muda nada: ele quase não gera SQL inválida (97% válida).
+- No nível difícil, ajustado e 32B empatam em 50%: é ali que está a margem do treino v2
+  (M15).
+
+**Ressalvas.**
+
+- Os grandes rodaram em 4 bits (D27): os números deles são um piso do que fariam em fp16.
+- O dev2 inclui os 50 perguntas do dev da v1, que serviram para escolher o modelo e
+  conferir o fine-tuning. Isso pode favorecer o ajustado em alguns pontos. O teste (M17)
+  é a comparação limpa.
+- O dev2 ainda está em revisão humana (M13): os 63 itens novos podem ter descartes, e os
+  números serão recalculados depois.
 
 ## Configuração (fixada antes de ver os resultados)
 
