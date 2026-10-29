@@ -80,7 +80,7 @@ def test_mixed_predictions(tmp_path, m2_toy_db, m2_dataset, m2_toy_items, m2_wri
     assert m["ex_by_difficulty"]["facil"] == {"n": 2, "ex": 0.5}
     assert m["ex_by_difficulty"]["medio"] == {"n": 1, "ex": 0.0}
     assert m["ex_by_difficulty"]["dificil"] == {"n": 1, "ex": 0.0}
-    assert m["latency_ms"] == {"p50": 200.0, "p95": 290.0}
+    assert m["latency_ms"] == {"p50": 200.0, "p95": 290.0, "mean": 200.0}
     assert m["cost_per_1k_usd"] == pytest.approx(0.5)  # 0.002 / 4 itens * 1000
 
 
@@ -119,8 +119,9 @@ def test_percentiles_and_cost(
     ]
     preds = m2_write_jsonl(tmp_path / "p.jsonl", rows)
     m = score.score(m2_dataset, preds, db_path=m2_toy_db).metrics
-    assert m["latency_ms"] == {"p50": 250.0, "p95": 385.0}
+    assert m["latency_ms"] == {"p50": 250.0, "p95": 385.0, "mean": 250.0}
     assert m["cost_per_1k_usd"] == pytest.approx(1.0)
+    assert m["hardware"] == ["cpu"]
 
 
 def test_percentile_helper() -> None:
