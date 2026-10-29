@@ -2,7 +2,7 @@
 
 > Status: **rodada 1 concluída (29/10/2026): EX no dev de 14,0% → 74,0%.** O ganho passa
 > muito dos 5 p.p., então não há rodadas extras. Adapter publicado no HF (público).
-> Pendente: tornar o notebook público no Kaggle (👤, regra 5).
+> Notebook do treino público no Kaggle. R9 cumprido.
 
 Modelo base: **`Qwen/Qwen2.5-Coder-1.5B-Instruct`** (recomendado no bake-off e confirmado
 pela Isabela; `results/bakeoff.md`). Sistema nas previsões: `ft-qwen2.5-coder-1.5b-instruct`.
@@ -113,4 +113,4 @@ Rodada 1. Adapter no HF (público):
 [`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora)
 (commit `bd8079ff5467c339586bc7fc31f18a19b6509a9e`; `adapter_config.json`: base
 `Qwen/Qwen2.5-Coder-1.5B-Instruct`, r=16, alpha=32, os 7 módulos-alvo). Notebook público
-no Kaggle: _(pendente, 👤)_.
+no Kaggle: https://www.kaggle.com/code/belasoares/tanque-cheio-finetune.
