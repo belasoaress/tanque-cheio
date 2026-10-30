@@ -194,7 +194,7 @@ ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo
 
 ## Decisões e trade-offs
 
-**Da v1** (D1 a D25, em [`docs/plan-v1.md`](docs/plan-v1.md)):
+**Da v1** (D1 a D25):
 
 - **DuckDB (D4).** Roda dentro do processo, lê Parquet direto e não precisa de servidor. O
   mesmo banco funciona no notebook, no CI e numa demo.
@@ -213,7 +213,7 @@ ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo
 - **Snapshot commitado (D25).** O Parquet tem 2,4 MB e fica no repositório, com o SHA-256
   e a contagem + MD5 de cada tabela. O CI reconstrói o banco em ~10 s, sem download.
 
-**Da v2** (D26 a D37, em [`plan.md`](plan.md)):
+**Da v2** (D26 a D37):
 
 - **Comparar com modelos maiores da mesma família (D26).** O 7B, o 14B e o 32B do
   Qwen2.5-Coder, sem ajuste, com o mesmo prompt e a mesma decodificação. Mesmo tokenizer
@@ -293,7 +293,6 @@ ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo
   [`results/training.md`](results/training.md) · bake-off dos modelos base:
   [`results/bakeoff.md`](results/bakeoff.md) · schema do banco:
   [`docs/schema.md`](docs/schema.md)
-- Plano do projeto: [`plan.md`](plan.md) (v2) e [`docs/plan-v1.md`](docs/plan-v1.md) (v1)
 
 ## Licença e dados
 

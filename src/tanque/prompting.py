@@ -1,4 +1,4 @@
-"""Prompt único usado por todos os sistemas e extração da SQL da resposta (plan.md, 5.4).
+"""Prompt único usado por todos os sistemas e extração da SQL da resposta.
 
 O prompt tem duas partes:
 
@@ -139,7 +139,7 @@ def repair_message(error: str) -> str:
 
 
 def build_repair_prompt(question: str, sql: str, error: str) -> list[dict]:
-    """Mensagens da nova tentativa (plan.md v2, 5.4): o prompt único, a SQL anterior e o erro.
+    """Mensagens da nova tentativa (D32): o prompt único, a SQL anterior e o erro.
 
     O começo é exatamente `build_prompt(question)` (mesmo system, mesma pergunta);
     depois vêm a SQL anterior como resposta do assistente e o erro como nova

@@ -47,7 +47,7 @@ Gerado por `tanque data build` (src/tanque/data/schema_doc.py). Não edite à m�
 ## DDL (`src/tanque/data/schema.sql`)
 
 ```sql
--- Contrato do banco (plan.md, seção 5.1). Não mudar sem aprovação.
+-- Contrato do banco. Não mudar sem aprovação.
 CREATE TABLE municipios (
     municipio_id  INTEGER PRIMARY KEY,
     nome          VARCHAR NOT NULL,      -- como na ANP, em maiúsculas, ex.: 'SAO CARLOS'

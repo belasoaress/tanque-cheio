@@ -1,4 +1,4 @@
-"""Testes de src/tanque/prompting.py (plan.md, seção 5.4)."""
+"""Testes de src/tanque/prompting.py."""
 
 import json
 

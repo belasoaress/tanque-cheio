@@ -1,4 +1,4 @@
-"""Autocorreção com 1 nova tentativa (M16; plan.md v2, D32 e contratos 5.3/5.4 v2).
+"""Autocorreção com 1 nova tentativa (M16; D32).
 
 Gerador e executor falsos; o banco, quando há, é o de brinquedo do conftest.
 O caminho real com o modelo minúsculo está em `test_infer_local_hf.py`.

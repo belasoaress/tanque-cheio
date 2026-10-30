@@ -1,6 +1,6 @@
 # Plano de gasto com a API (M0)
 
-Estimativa da seção 6 do `plan.md`, calculada com os preços oficiais em
+Estimativa de gasto do projeto, calculada com os preços oficiais em
 `configs/pricing.toml`.
 
 - Fonte: <https://platform.claude.com/docs/en/about-claude/pricing> (destino do

@@ -1,4 +1,4 @@
-"""Modelos maiores no dev2 (M14) e teste final v2 (M17; plan.md v2, D26, D27, D35, D37).
+"""Modelos maiores no dev2 (M14) e teste final v2 (M17; D26, D27, D35, D37).
 
 Lógica dos notebooks `05_large_baselines.ipynb` (dev2) e `06_final_v2.ipynb`
 (teste), aqui para ser testada sem GPU (`tests/test_infer_large.py`). O notebook

@@ -1,4 +1,4 @@
-"""Autocorreção com 1 nova tentativa (plan.md v2, D32; contratos 5.3 e 5.4 v2).
+"""Autocorreção com 1 nova tentativa (D32).
 
 Para cada pergunta:
 

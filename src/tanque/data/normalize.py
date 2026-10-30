@@ -19,7 +19,7 @@ from pathlib import Path
 
 import polars as pl
 
-# Lista fechada de produtos automotivos (plan.md, seção 1: GLP fica de fora).
+# Lista fechada de produtos automotivos (GLP fica de fora do escopo).
 PRODUCTS: tuple[str, ...] = (
     "DIESEL",
     "DIESEL S10",
