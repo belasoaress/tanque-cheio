@@ -180,14 +180,24 @@ confirma a vazão antes da rodada inteira.
 
 ## Rodadas
 
-*A preencher depois da execução no Kaggle (👤): EX no dev2 do ft-v2 contra o ft-v1, com
-e sem nova tentativa, por nível, McNemar e curvas de perda. No máximo 2 rodadas (R20).*
+Rodada 1 executada no Kaggle (kernel `belasoares/tanque-cheio-finetune-v2`, 1 T4) em
+30/10/2026: 1.242 passos, 9.926 pares de treino (5% para validação), nenhum descartado
+por tamanho, 15,4 s/passo, **5,3 h de treino**, pico de 2,5 GiB, perda de validação final
+0,0018 (`results/training/train-log__ft2-qwen2.5-coder-1.5b-instruct.json`).
 
 | Rodada | Mudança | EX dev2 | fácil | médio | difícil | +retry | Tempo de GPU |
 |---|---|---|---|---|---|---|---|
 | ft-v1 (referência) | — | 74,3% | 97,4% | 76,5% | 50,0% | 74,3% | 3,5 h |
-| 1 | templates v2 (este PR) | — | — | — | — | — | — |
+| **1** | templates v2 (PR #33) | **96,5%** (IC 92,9–99,1%) | 100,0% | 94,1% | 95,0% | 96,5% | 5,3 h |
 
 **Cuidado na leitura.** Os templates novos foram desenhados olhando os erros do dev2.
 O filtro de vazamento impede perguntas quase iguais às do dev2, mas o ganho no dev2 vai
 ser otimista: o teste (M17) é a medida limpa.
+
+**Resultado da rodada 1.** O ft-v2 supera o ft-v1 no dev2 por +22,1 p.p. (27 perguntas só
+o v2 acerta, 2 só o v1; McNemar p < 0,001), e o 32B sem ajuste por +23,9 p.p. (p < 0,001).
+O maior salto é no difícil (50% → 95%). A nova tentativa não muda nada: o v2 gerou SQL
+válida em 100% do dev2. A latência fica igual à do v1 (p50 3,9 s). Pela regra do M15, a
+rodada 1 basta (ganho acima do v1 e nenhum motivo para uma rodada 2), e o **ft-v2 é o
+modelo candidato do teste final (M17)**. A ressalva acima vale com força aqui: parte do
+salto vem de templates desenhados para os padrões do dev2.

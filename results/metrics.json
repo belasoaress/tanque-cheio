@@ -663,6 +663,16 @@
       "split": "dev2"
     },
     {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 96,
+      "delta_ex": 0.8496,
+      "mcnemar_p": 2.524e-29,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
       "a": "base-qwen2.5-coder-7b-instruct",
       "a_only": 0,
       "b": "base-qwen2.5-coder-7b-instruct+retry",
@@ -703,6 +713,16 @@
       "split": "dev2"
     },
     {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 1,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 74,
+      "delta_ex": 0.646,
+      "mcnemar_p": 4.023e-21,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
       "a": "base-qwen2.5-coder-14b-instruct",
       "a_only": 0,
       "b": "base-qwen2.5-coder-14b-instruct+retry",
@@ -733,6 +753,16 @@
       "split": "dev2"
     },
     {
+      "a": "base-qwen2.5-coder-14b-instruct",
+      "a_only": 0,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 63,
+      "delta_ex": 0.5575,
+      "mcnemar_p": 2.168e-19,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
       "a": "base-qwen2.5-coder-32b-instruct",
       "a_only": 0,
       "b": "base-qwen2.5-coder-32b-instruct+retry",
@@ -753,9 +783,39 @@
       "split": "dev2"
     },
     {
+      "a": "base-qwen2.5-coder-32b-instruct",
+      "a_only": 2,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 29,
+      "delta_ex": 0.2389,
+      "mcnemar_p": 4.629e-07,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
       "a": "ft-qwen2.5-coder-1.5b-instruct",
       "a_only": 0,
       "b": "ft-qwen2.5-coder-1.5b-instruct+retry",
+      "b_only": 0,
+      "delta_ex": 0.0,
+      "mcnemar_p": 1.0,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
+      "a": "ft-qwen2.5-coder-1.5b-instruct",
+      "a_only": 2,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 27,
+      "delta_ex": 0.2212,
+      "mcnemar_p": 1.624e-06,
+      "n": 113,
+      "split": "dev2"
+    },
+    {
+      "a": "ft2-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct+retry",
       "b_only": 0,
       "delta_ex": 0.0,
       "mcnemar_p": 1.0,
@@ -951,6 +1011,100 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.09,
       "valid_sql_rate": 0.9735
+    }
+  },
+  "ft2-qwen2.5-coder-1.5b-instruct": {
+    "dev2": {
+      "blocked_rate": 0.0,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "dev2.jsonl",
+      "ex": 0.9646,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.95,
+          "ex_relaxed": 0.975,
+          "n": 40
+        },
+        "facil": {
+          "ex": 1.0,
+          "ex_relaxed": 1.0,
+          "n": 39
+        },
+        "medio": {
+          "ex": 0.9412,
+          "ex_relaxed": 0.9412,
+          "n": 34
+        }
+      },
+      "ex_ci95": [
+        0.9292,
+        0.9912
+      ],
+      "ex_relaxed": 0.9735,
+      "ex_relaxed_ci95": [
+        0.9381,
+        1.0
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 3975.5,
+        "p50": 3929.0,
+        "p95": 7832.6
+      },
+      "n": 113,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.06,
+      "valid_sql_rate": 1.0
+    }
+  },
+  "ft2-qwen2.5-coder-1.5b-instruct+retry": {
+    "dev2": {
+      "blocked_rate": 0.0,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "dev2.jsonl",
+      "ex": 0.9646,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.95,
+          "ex_relaxed": 0.975,
+          "n": 40
+        },
+        "facil": {
+          "ex": 1.0,
+          "ex_relaxed": 1.0,
+          "n": 39
+        },
+        "medio": {
+          "ex": 0.9412,
+          "ex_relaxed": 0.9412,
+          "n": 34
+        }
+      },
+      "ex_ci95": [
+        0.9292,
+        0.9912
+      ],
+      "ex_relaxed": 0.9735,
+      "ex_relaxed_ci95": [
+        0.9381,
+        1.0
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 3975.5,
+        "p50": 3929.0,
+        "p95": 7832.6
+      },
+      "n": 113,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.06,
+      "valid_sql_rate": 1.0
     }
   }
 }
