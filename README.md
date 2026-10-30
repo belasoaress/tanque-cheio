@@ -285,8 +285,8 @@ ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo
   v2, dos modelos grandes e do teste final (`tanque-cheio-finetune-v2`,
   `tanque-cheio-large`, `tanque-cheio-final-v2a` e `-v2b`) são privados por enquanto; os
   notebooks estão em [`notebooks/`](notebooks/).
-- Dataset (Hugging Face, snapshot + treino/dev/teste): ainda a publicar, em
-  `belasoares/tanque-cheio`.
+- Dataset (Hugging Face, snapshot + treino/dev/teste):
+  <https://huggingface.co/datasets/belasoares/tanque-cheio>
 - Relatório final: [`results/report.md`](results/report.md) · modelos maiores no dev2:
   [`results/large-baselines.md`](results/large-baselines.md) · treino v2:
   [`results/training-v2.md`](results/training-v2.md) · treino v1:

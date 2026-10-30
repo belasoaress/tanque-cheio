@@ -68,8 +68,8 @@ as comparações pareadas:
 
 ## Dados de treino
 
-[`belasoares/tanque-cheio`](https://huggingface.co/datasets/belasoares/tanque-cheio)
-(a publicar), config `pairs`, split `train`: **10.448 pares** pergunta → SQL gerados por
+[`belasoares/tanque-cheio`](https://huggingface.co/datasets/belasoares/tanque-cheio),
+config `pairs`, split `train`: **10.448 pares** pergunta → SQL gerados por
 templates parametrizados com valores reais do banco e validados por execução. São as 40
 intenções da v1 mais 17 novas (D34), para os padrões que o adapter v1 errava no dev2:
 posição em ranking, acumulado, "tanto em X quanto em Y", "todos os …", participação
