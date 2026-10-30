@@ -2,7 +2,8 @@
 
 > Tudo aqui vem do **dev2** (`datasets/dev2.jsonl`, 113 perguntas, D30). O teste não foi
 > aberto nem consultado (regra 0.6): só o código de vazamento o lê, em tempo de execução,
-> para tirar do treino as perguntas parecidas com ele.
+> para tirar do treino as perguntas parecidas com ele. A exceção é a última seção,
+> "Resultado no teste (M17)", escrita depois do teste final, sem mudar nada no treino.
 
 ## Análise de erros do ft-v1 no dev2
 
@@ -201,3 +202,39 @@ válida em 100% do dev2. A latência fica igual à do v1 (p50 3,9 s). Pela regra
 rodada 1 basta (ganho acima do v1 e nenhum motivo para uma rodada 2), e o **ft-v2 é o
 modelo candidato do teste final (M17)**. A ressalva acima vale com força aqui: parte do
 salto vem de templates desenhados para os padrões do dev2.
+
+## Resultado no teste (M17)
+
+O teste (150 perguntas) foi aberto uma vez para o ft-v2, com as mesmas regras de todos os
+sistemas (384 tokens, nova tentativa, adapter fundido; D33). Números de
+[`results/report.md`](report.md):
+
+| Sistema | EX dev2 | EX teste | IC 95% teste | fácil | médio | difícil |
+|---|---|---|---|---|---|---|
+| ft-v1 | 74,3% | 76,0% | 68,7–82,7% | 98,0% | 76,7% | 47,5% |
+| **ft-v2** | 96,5% | **80,7%** | 74,0–86,7% | 92,0% | 83,3% | 62,5% |
+| 32B sem ajuste (nf4) | 72,6% | 78,0% | 71,3–84,7% | 96,0% | 90,0% | 37,5% |
+
+- **ft-v2 × ft-v1 no teste:** +4,7 p.p., com 11 perguntas que só o v2 acerta e 4 que só o
+  v1 acerta; McNemar p = 0,12. **Não é significativo.** No dev2 a mesma comparação dava
+  +22,1 p.p. (p < 0,001).
+- **ft-v2 × 32B no teste:** +2,7 p.p. (21 contra 17; p = 0,63): empate estatístico. No
+  dev2 eram +23,9 p.p.
+- **Por nível:** o v2 ganha no difícil (+15,0 p.p., de 47,5% para 62,5%) e no médio
+  (+6,7 p.p.), e perde no fácil (98,0% → 92,0%). A nova tentativa não muda nada no
+  teste (80,7% com e sem).
+
+**Leitura: sobreajuste ao dev2.** O ft-v2 caiu de 96,5% no dev2 para 80,7% no teste,
+~16 p.p. O ft-v1 e o 32B, que não foram moldados pelo dev2, ficaram parecidos nos dois
+(74,3% → 76,0% e 72,6% → 78,0%). A queda é do v2, e a causa provável é a que a seção
+"Cuidado na leitura" previa: os 17 templates novos e os reforços foram desenhados a partir
+de erros específicos do dev2. O filtro de vazamento barra perguntas quase iguais, mas não
+o mesmo padrão com outra redação, nem as convenções de colunas que só o gold do dev2
+seguia (como as capitais de uma região só com `nome`). O modelo aprendeu os padrões do
+dev2 melhor do que aprendeu a generalizar. O ganho real que sobra no teste está onde o
+treino mirou (difícil e médio); a perda no fácil sugere que a mudança de distribuição
+(fácil de 34% para 28% do treino) e os reforços de convenção custaram alguma coisa.
+
+**Lição para uma próxima rodada:** separar as perguntas que orientam os templates das que
+medem o ganho (por exemplo, desenhar os templates a partir de metade do dev2 e medir na
+outra metade), e rodar mais de uma seed antes de chamar uma diferença de ganho.
