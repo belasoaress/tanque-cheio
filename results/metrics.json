@@ -87,6 +87,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.13,
       "valid_sql_rate": 0.2832
+    },
+    "test": {
+      "blocked_rate": 0.0333,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.12,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.0,
+          "ex_relaxed": 0.0,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.28,
+          "ex_relaxed": 0.3,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.0667,
+          "ex_relaxed": 0.0667,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.0733,
+        0.1733
+      ],
+      "ex_relaxed": 0.1267,
+      "ex_relaxed_ci95": [
+        0.08,
+        0.18
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 3481.0,
+        "p50": 3087.0,
+        "p95": 7630.0
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.13,
+      "valid_sql_rate": 0.22
     }
   },
   "base-qwen2.5-coder-1.5b-instruct+retry": {
@@ -134,6 +179,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.13,
       "valid_sql_rate": 0.3097
+    },
+    "test": {
+      "blocked_rate": 0.0333,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.12,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.0,
+          "ex_relaxed": 0.0,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.28,
+          "ex_relaxed": 0.3,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.0667,
+          "ex_relaxed": 0.0667,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.0733,
+        0.1733
+      ],
+      "ex_relaxed": 0.1267,
+      "ex_relaxed_ci95": [
+        0.08,
+        0.18
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 6600.0,
+        "p50": 6231.5,
+        "p95": 13516.9
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.13,
+      "valid_sql_rate": 0.2333
     }
   },
   "base-qwen2.5-coder-14b-instruct": {
@@ -181,6 +271,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 10.21,
       "valid_sql_rate": 0.8407
+    },
+    "test": {
+      "blocked_rate": 0.0133,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.6,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.25,
+          "ex_relaxed": 0.35,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.62,
+          "ex_relaxed": 0.62,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.8167,
+          "ex_relaxed": 0.8333,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.52,
+        0.68
+      ],
+      "ex_relaxed": 0.6333,
+      "ex_relaxed_ci95": [
+        0.5533,
+        0.7133
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 19280.3,
+        "p50": 16227.5,
+        "p95": 46047.1
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 10.25,
+      "valid_sql_rate": 0.8733
     }
   },
   "base-qwen2.5-coder-14b-instruct+retry": {
@@ -228,6 +363,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 10.21,
       "valid_sql_rate": 0.9646
+    },
+    "test": {
+      "blocked_rate": 0.0133,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.6267,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.275,
+          "ex_relaxed": 0.375,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.62,
+          "ex_relaxed": 0.62,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.8667,
+          "ex_relaxed": 0.9,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.5467,
+        0.7067
+      ],
+      "ex_relaxed": 0.6667,
+      "ex_relaxed_ci95": [
+        0.5933,
+        0.74
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 23637.9,
+        "p50": 16456.0,
+        "p95": 68499.3
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 10.25,
+      "valid_sql_rate": 0.9467
     }
   },
   "base-qwen2.5-coder-32b-instruct": {
@@ -275,6 +455,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 10.77,
       "valid_sql_rate": 0.9292
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.78,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.375,
+          "ex_relaxed": 0.525,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.96,
+          "ex_relaxed": 0.96,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.9,
+          "ex_relaxed": 0.9167,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.7133,
+        0.8467
+      ],
+      "ex_relaxed": 0.8267,
+      "ex_relaxed_ci95": [
+        0.7667,
+        0.8867
+      ],
+      "gpus": 2,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 31990.3,
+        "p50": 29052.0,
+        "p95": 74415.0
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 10.73,
+      "valid_sql_rate": 0.9667
     }
   },
   "base-qwen2.5-coder-32b-instruct+retry": {
@@ -322,6 +547,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 10.77,
       "valid_sql_rate": 0.9646
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.7867,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.4,
+          "ex_relaxed": 0.575,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.96,
+          "ex_relaxed": 0.96,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.9,
+          "ex_relaxed": 0.9167,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.72,
+        0.8533
+      ],
+      "ex_relaxed": 0.84,
+      "ex_relaxed_ci95": [
+        0.78,
+        0.8933
+      ],
+      "gpus": 2,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 34014.4,
+        "p50": 29052.0,
+        "p95": 79602.4
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 10.73,
+      "valid_sql_rate": 0.9933
     }
   },
   "base-qwen2.5-coder-7b-instruct": {
@@ -369,6 +639,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 5.73,
       "valid_sql_rate": 0.6726
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.4067,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.125,
+          "ex_relaxed": 0.2,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.28,
+          "ex_relaxed": 0.3,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.7,
+          "ex_relaxed": 0.7667,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.3267,
+        0.4867
+      ],
+      "ex_relaxed": 0.46,
+      "ex_relaxed_ci95": [
+        0.38,
+        0.54
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 9173.5,
+        "p50": 8800.5,
+        "p95": 18217.6
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 5.75,
+      "valid_sql_rate": 0.6267
     }
   },
   "base-qwen2.5-coder-7b-instruct+retry": {
@@ -416,6 +731,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 5.73,
       "valid_sql_rate": 0.8761
+    },
+    "test": {
+      "blocked_rate": 0.0133,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.5133,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.175,
+          "ex_relaxed": 0.25,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.5,
+          "ex_relaxed": 0.52,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.75,
+          "ex_relaxed": 0.8167,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.4333,
+        0.5933
+      ],
+      "ex_relaxed": 0.5667,
+      "ex_relaxed_ci95": [
+        0.4867,
+        0.6467
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 13004.3,
+        "p50": 10269.5,
+        "p95": 32904.0
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 5.75,
+      "valid_sql_rate": 0.9
     }
   },
   "base-qwen3-1.7b": {
@@ -778,6 +1138,216 @@
       "mcnemar_p": 1.0,
       "n": 113,
       "split": "dev2"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "base-qwen2.5-coder-1.5b-instruct+retry",
+      "b_only": 0,
+      "delta_ex": 0.0,
+      "mcnemar_p": 1.0,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 3,
+      "b": "base-qwen2.5-coder-7b-instruct",
+      "b_only": 46,
+      "delta_ex": 0.2867,
+      "mcnemar_p": 6.981e-11,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 1,
+      "b": "base-qwen2.5-coder-14b-instruct",
+      "b_only": 73,
+      "delta_ex": 0.48,
+      "mcnemar_p": 7.941e-21,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "base-qwen2.5-coder-32b-instruct",
+      "b_only": 99,
+      "delta_ex": 0.66,
+      "mcnemar_p": 3.155e-30,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "ft-qwen2.5-coder-1.5b-instruct",
+      "b_only": 96,
+      "delta_ex": 0.64,
+      "mcnemar_p": 2.524e-29,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-1.5b-instruct",
+      "a_only": 2,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 105,
+      "delta_ex": 0.6867,
+      "mcnemar_p": 7.123e-29,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 0,
+      "b": "base-qwen2.5-coder-7b-instruct+retry",
+      "b_only": 16,
+      "delta_ex": 0.1067,
+      "mcnemar_p": 3.052e-05,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 10,
+      "b": "base-qwen2.5-coder-14b-instruct",
+      "b_only": 39,
+      "delta_ex": 0.1933,
+      "mcnemar_p": 3.846e-05,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 5,
+      "b": "base-qwen2.5-coder-32b-instruct",
+      "b_only": 61,
+      "delta_ex": 0.3733,
+      "mcnemar_p": 2.631e-13,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 9,
+      "b": "ft-qwen2.5-coder-1.5b-instruct",
+      "b_only": 62,
+      "delta_ex": 0.3533,
+      "mcnemar_p": 7.335e-11,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-7b-instruct",
+      "a_only": 8,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 68,
+      "delta_ex": 0.4,
+      "mcnemar_p": 5.633e-13,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-14b-instruct",
+      "a_only": 0,
+      "b": "base-qwen2.5-coder-14b-instruct+retry",
+      "b_only": 4,
+      "delta_ex": 0.0267,
+      "mcnemar_p": 0.125,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-14b-instruct",
+      "a_only": 6,
+      "b": "base-qwen2.5-coder-32b-instruct",
+      "b_only": 33,
+      "delta_ex": 0.18,
+      "mcnemar_p": 1.43e-05,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-14b-instruct",
+      "a_only": 17,
+      "b": "ft-qwen2.5-coder-1.5b-instruct",
+      "b_only": 41,
+      "delta_ex": 0.16,
+      "mcnemar_p": 0.002233,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-14b-instruct",
+      "a_only": 16,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 47,
+      "delta_ex": 0.2067,
+      "mcnemar_p": 0.0001171,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-32b-instruct",
+      "a_only": 0,
+      "b": "base-qwen2.5-coder-32b-instruct+retry",
+      "b_only": 1,
+      "delta_ex": 0.0067,
+      "mcnemar_p": 1.0,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-32b-instruct",
+      "a_only": 20,
+      "b": "ft-qwen2.5-coder-1.5b-instruct",
+      "b_only": 17,
+      "delta_ex": -0.02,
+      "mcnemar_p": 0.7428,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "base-qwen2.5-coder-32b-instruct",
+      "a_only": 17,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 21,
+      "delta_ex": 0.0267,
+      "mcnemar_p": 0.6271,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "ft-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "ft-qwen2.5-coder-1.5b-instruct+retry",
+      "b_only": 0,
+      "delta_ex": 0.0,
+      "mcnemar_p": 1.0,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "ft-qwen2.5-coder-1.5b-instruct",
+      "a_only": 4,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct",
+      "b_only": 11,
+      "delta_ex": 0.0467,
+      "mcnemar_p": 0.1185,
+      "n": 150,
+      "split": "test"
+    },
+    {
+      "a": "ft2-qwen2.5-coder-1.5b-instruct",
+      "a_only": 0,
+      "b": "ft2-qwen2.5-coder-1.5b-instruct+retry",
+      "b_only": 0,
+      "delta_ex": 0.0,
+      "mcnemar_p": 1.0,
+      "n": 150,
+      "split": "test"
     }
   ],
   "ft-qwen2.5-coder-1.5b-instruct": {
@@ -868,6 +1438,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.09,
       "valid_sql_rate": 0.9646
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.76,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.475,
+          "ex_relaxed": 0.6,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.98,
+          "ex_relaxed": 0.98,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.7667,
+          "ex_relaxed": 0.8833,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.6867,
+        0.8267
+      ],
+      "ex_relaxed": 0.84,
+      "ex_relaxed_ci95": [
+        0.78,
+        0.8933
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 4325.8,
+        "p50": 4259.0,
+        "p95": 9352.3
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.1,
+      "valid_sql_rate": 0.9667
     }
   },
   "ft-qwen2.5-coder-1.5b-instruct+retry": {
@@ -915,6 +1530,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.09,
       "valid_sql_rate": 0.9735
+    },
+    "test": {
+      "blocked_rate": 0.0,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.76,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.475,
+          "ex_relaxed": 0.6,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.98,
+          "ex_relaxed": 0.98,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.7667,
+          "ex_relaxed": 0.8833,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.6867,
+        0.8267
+      ],
+      "ex_relaxed": 0.84,
+      "ex_relaxed_ci95": [
+        0.78,
+        0.8933
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 4521.9,
+        "p50": 4267.5,
+        "p95": 9588.5
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.1,
+      "valid_sql_rate": 0.98
     }
   },
   "ft2-qwen2.5-coder-1.5b-instruct": {
@@ -962,6 +1622,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.06,
       "valid_sql_rate": 1.0
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.8067,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.625,
+          "ex_relaxed": 0.75,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.92,
+          "ex_relaxed": 0.92,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.8333,
+          "ex_relaxed": 0.8667,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.74,
+        0.8667
+      ],
+      "ex_relaxed": 0.8533,
+      "ex_relaxed_ci95": [
+        0.7933,
+        0.9067
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 4284.3,
+        "p50": 4268.0,
+        "p95": 8951.8
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.06,
+      "valid_sql_rate": 0.9867
     }
   },
   "ft2-qwen2.5-coder-1.5b-instruct+retry": {
@@ -1009,6 +1714,51 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.06,
       "valid_sql_rate": 1.0
+    },
+    "test": {
+      "blocked_rate": 0.0067,
+      "cost_per_1k_usd": 0.0,
+      "dataset": "test.jsonl",
+      "ex": 0.8067,
+      "ex_by_difficulty": {
+        "dificil": {
+          "ex": 0.625,
+          "ex_relaxed": 0.75,
+          "n": 40
+        },
+        "facil": {
+          "ex": 0.92,
+          "ex_relaxed": 0.92,
+          "n": 50
+        },
+        "medio": {
+          "ex": 0.8333,
+          "ex_relaxed": 0.8667,
+          "n": 60
+        }
+      },
+      "ex_ci95": [
+        0.74,
+        0.8667
+      ],
+      "ex_relaxed": 0.8533,
+      "ex_relaxed_ci95": [
+        0.7933,
+        0.9067
+      ],
+      "gpus": 1,
+      "hardware": [
+        "kaggle-t4"
+      ],
+      "latency_ms": {
+        "mean": 4327.4,
+        "p50": 4324.5,
+        "p95": 8951.8
+      },
+      "n": 150,
+      "n_missing": 0,
+      "peak_gpu_mem_gib": 3.06,
+      "valid_sql_rate": 0.9933
     }
   }
 }

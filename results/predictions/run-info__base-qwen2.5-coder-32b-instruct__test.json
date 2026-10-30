@@ -1,0 +1,82 @@
+{
+  "system": "base-qwen2.5-coder-32b-instruct",
+  "split": "test",
+  "path": "/kaggle/working/base-qwen2.5-coder-32b-instruct__test.jsonl",
+  "model_id": "Qwen/Qwen2.5-Coder-32B-Instruct",
+  "model_revision": "381fc969f78efac66bc87ff7ddeadb7e73c218a7",
+  "model_revision_error": null,
+  "adapter_id": null,
+  "adapter_revision": null,
+  "adapter_revision_error": null,
+  "adapter_merged": false,
+  "dtype": "float16",
+  "quantization": "nf4",
+  "device_map": "auto",
+  "max_memory": {
+    "0": 13958643712,
+    "1": 15032385536
+  },
+  "gpus": 2,
+  "gpu_indices": [
+    0,
+    1
+  ],
+  "peak_gpu_mem_gib": 10.73,
+  "hardware": "kaggle-t4",
+  "max_new_tokens": 384,
+  "chat_template_kwargs": {},
+  "system_suffix": "",
+  "system_merged_into_user": false,
+  "retry": true,
+  "db_path": null,
+  "limit": null,
+  "n_items": 150,
+  "completed": 150,
+  "resumed": 0,
+  "time_budget_s": 14400.0,
+  "stopped_reason": null,
+  "load_s": 570.2,
+  "total_s": 5682.3,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.21.0",
+    "peft": "0.21.2",
+    "accelerate": "1.15.0"
+  },
+  "summary": {
+    "n": 150,
+    "errors": 0,
+    "empty_sql": 0,
+    "hit_max_new_tokens": 2,
+    "p50_latency_ms": 29070,
+    "mean_input_tokens": 795.5666666666667
+  },
+  "retry_system": "base-qwen2.5-coder-32b-instruct+retry",
+  "retry_path": "/kaggle/working/base-qwen2.5-coder-32b-instruct+retry__test.jsonl",
+  "retry_summary": {
+    "n": 150,
+    "errors": 0,
+    "empty_sql": 0,
+    "p50_latency_ms": 29070,
+    "mean_input_tokens": 832.96,
+    "retried": 5,
+    "first_blocked": 1,
+    "first_exec_error": 4,
+    "retry_generation_errors": 0
+  },
+  "skipped": false,
+  "gpus_requested": 2,
+  "model_source": "official",
+  "requested_model_id": "Qwen/Qwen2.5-Coder-32B-Instruct",
+  "requested_revision": "381fc969f78efac66bc87ff7ddeadb7e73c218a7",
+  "time_budget_h": 4,
+  "repo_ref": "main",
+  "repo_commit": "b7adc171dccd8bf6bad7e54f16c73fef6ffdbfee",
+  "part": "b",
+  "kernel": "belasoares/tanque-cheio-final-v2b",
+  "session_order": 1,
+  "gpu_names": [
+    "Tesla T4",
+    "Tesla T4"
+  ]
+}
