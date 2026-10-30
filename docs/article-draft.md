@@ -20,7 +20,7 @@ Frases para conferir ou reescrever com a sua voz:
 - O fechamento (o que vem depois): troque pelo próximo passo real, se for outro.
 
 Todos os números foram conferidos contra results/report.md (o teste
-tests/test_readme.py confere os percentuais deste arquivo). Preencha o link da demo.
+tests/test_readme.py confere os percentuais deste arquivo). O link da demo já está preenchido; como imagem extra, use docs/img/demo-ranking-capitais.png.
 -->
 
 # Um modelo de 1,5B empatou com um de 32B. Custou US$ 0.
@@ -121,7 +121,7 @@ ajustado com dados baratos chega perto de um modelo muito maior, por uma fraçã
 - Código, dados e relatório completo: https://github.com/belasoaress/tanque-cheio
 - Adapter v2 no Hugging Face: https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2
 - Notebook do fine-tuning (v1) no Kaggle: https://www.kaggle.com/code/belasoares/tanque-cheio-finetune
-- Demo: [link da demo]
+- Demo: https://huggingface.co/spaces/belasoares/tanque-cheio (se estiver pausada, as capturas estão no README)
 
 Todos os números saem das previsões salvas no repositório e são recalculados pelo CI.
 
