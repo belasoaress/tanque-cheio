@@ -1,0 +1,79 @@
+{
+  "system": "base-qwen2.5-coder-1.5b-instruct",
+  "split": "test",
+  "path": "/kaggle/working/base-qwen2.5-coder-1.5b-instruct__test.jsonl",
+  "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "model_revision": "2e1fd397ee46e1388853d2af2c993145b0f1098a",
+  "model_revision_error": null,
+  "adapter_id": null,
+  "adapter_revision": null,
+  "adapter_revision_error": null,
+  "adapter_merged": false,
+  "dtype": "float16",
+  "quantization": null,
+  "device_map": {
+    "": 0
+  },
+  "max_memory": null,
+  "gpus": 1,
+  "gpu_indices": [
+    0
+  ],
+  "peak_gpu_mem_gib": 3.13,
+  "hardware": "kaggle-t4",
+  "max_new_tokens": 384,
+  "chat_template_kwargs": {},
+  "system_suffix": "",
+  "system_merged_into_user": false,
+  "retry": true,
+  "db_path": null,
+  "limit": null,
+  "n_items": 150,
+  "completed": 150,
+  "resumed": 0,
+  "time_budget_s": null,
+  "stopped_reason": null,
+  "load_s": 23.6,
+  "total_s": 1020.6,
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.21.0",
+    "peft": "0.21.2",
+    "accelerate": "1.15.0"
+  },
+  "summary": {
+    "n": 150,
+    "errors": 0,
+    "empty_sql": 0,
+    "hit_max_new_tokens": 2,
+    "p50_latency_ms": 3088,
+    "mean_input_tokens": 795.5666666666667
+  },
+  "retry_system": "base-qwen2.5-coder-1.5b-instruct+retry",
+  "retry_path": "/kaggle/working/base-qwen2.5-coder-1.5b-instruct+retry__test.jsonl",
+  "retry_summary": {
+    "n": 150,
+    "errors": 0,
+    "empty_sql": 0,
+    "p50_latency_ms": 6271,
+    "mean_input_tokens": 1564.7666666666667,
+    "retried": 117,
+    "first_blocked": 5,
+    "first_exec_error": 112,
+    "retry_generation_errors": 0
+  },
+  "skipped": false,
+  "gpus_requested": 1,
+  "model_source": "official",
+  "requested_model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "requested_revision": "2e1fd397ee46e1388853d2af2c993145b0f1098a",
+  "time_budget_h": null,
+  "repo_ref": "main",
+  "repo_commit": "b7adc171dccd8bf6bad7e54f16c73fef6ffdbfee",
+  "part": "a",
+  "kernel": "belasoares/tanque-cheio-final-v2a",
+  "session_order": 1,
+  "gpu_names": [
+    "Tesla T4"
+  ]
+}
