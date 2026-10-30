@@ -7,6 +7,9 @@
 data/*
 !data/manifest.json
 
+# Demo (M19): banco e snapshot que o app monta ao rodar fora do Space
+app/runtime/
+
 # Python
 __pycache__/
 *.py[cod]
