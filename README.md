@@ -133,6 +133,23 @@ Outros comandos úteis: `uv run tanque data build` (refaz tudo a partir dos 48 C
 roda modelos. Para usar o adapter direto, veja o exemplo no card do
 [adapter v2](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2).
 
+## Demo
+
+O modelo final (ft-v2), fundido e quantizado em GGUF Q4_K_M (~0,9 GB), roda em CPU, sem
+GPU. A demo é um app Gradio (`app/`) que usa o mesmo prompt, o mesmo guardrail e a mesma
+nova tentativa da avaliação. Numa CPU de 4 núcleos, as perguntas de exemplo levam de 6 a
+21 s.
+
+![Demo: as 5 capitais com a gasolina mais cara no último mês](docs/img/demo-ranking-capitais.png)
+
+![Demo: meses de 2026 em que o etanol compensou em Goiânia](docs/img/demo-etanol-goiania.png)
+
+Ela está publicada no Hugging Face Spaces, em
+[belasoares/tanque-cheio](https://huggingface.co/spaces/belasoares/tanque-cheio), na CPU
+grátis. Essa CPU tem cota de uso por conta, e quando a cota acaba o Space fica pausado. Para
+rodar no seu computador, siga [`docs/demo.md`](docs/demo.md), seção "Rodar o app no seu
+computador".
+
 ## Arquitetura
 
 Dados e treino:
@@ -158,7 +175,7 @@ sistemas: base-1.5B · ft-v1 · ft-v2 · base-7B · base-14B · base-32B
    ▼
 métricas (EX rígida/tolerante, IC, McNemar, latência, memória, custo) ──► report v2
                                    │
-ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo (M19, em andamento)
+ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo
 ```
 
 - `src/tanque/data/`: download, normalização, build do banco e do snapshot.
@@ -251,6 +268,10 @@ ft-v2 fundido ──► GGUF Q4_K_M ──► HF Spaces (CPU) ──► demo (M1
 
 ## Links
 
+- Demo (Hugging Face Spaces, CPU grátis; pode estar pausada por cota):
+  <https://huggingface.co/spaces/belasoares/tanque-cheio>
+- Modelo final em GGUF Q4_K_M (Hugging Face):
+  <https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-gguf>
 - Adapter v2 (Hugging Face):
   <https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2>
 - Adapter v1 (Hugging Face):
