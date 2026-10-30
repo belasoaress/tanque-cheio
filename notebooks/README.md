@@ -426,15 +426,16 @@ Os checkpoints são os mesmos commits do M14. O teste roda **uma vez por sistema
 tentativa); as previsões da v1 foram movidas para `results/predictions/v1/` (fora do
 `check-metrics`), e as da v2 entram com os mesmos nomes em `results/predictions/`.
 
-**O commit do adapter v2.** A 1ª célula traz
-`FT2_ADAPTER_REVISION = "PREENCHER_COM_O_COMMIT_DO_ADAPTER_V2"`. Esse valor é o commit do
-repo `belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2` no HF depois do `hf upload` do
-M15 (passo 8 do "Treino v2"; 40 caracteres hexadecimais; também aparece na aba *Files and
-versions* do repo). O agente te passa o valor quando o M15 fechar; você o põe no passo 2
-abaixo. Sem ele, o kernel (a) para na 2ª célula, antes de instalar qualquer coisa, com a
-mensagem `FT2_ADAPTER_REVISION não foi preenchido`. O kernel (b) não usa o adapter. Se o
-M15 decidir que o ft-v2 não supera o ft-v1 no dev2 e o adapter não for publicado, avise o
-agente antes de rodar: o ft-v2 sai da lista de sistemas.
+**O commit do adapter v2.** A 1ª célula já traz
+`FT2_ADAPTER_REVISION = "beeb19b5b4331ff048c6be0f03b9d53476d509ab"`: o commit do repo
+público `belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2` no HF (publicado em
+30/10/2026; adapter LoRA r=16, alpha=32 sobre o Qwen2.5-Coder-1.5B-Instruct). O ft-v2
+venceu o ft-v1 no dev2 (96,5% contra 74,3%, `results/training-v2.md`) e é o candidato do
+teste final. Se um dia publicar outra versão do adapter, troque esse valor na 1ª célula
+pelo commit novo (40 caracteres hexadecimais, aba *Files and versions* do repo). Sem um
+commit válido (ex.: um placeholder como `PREENCHER_COM_O_COMMIT_DO_ADAPTER_V2`), o kernel
+(a) para na 2ª célula, antes de instalar qualquer coisa, com a mensagem
+`FT2_ADAPTER_REVISION não foi preenchido`. O kernel (b) não usa o adapter.
 
 ### Estimativa de GPU (150 perguntas)
 
@@ -470,13 +471,10 @@ estourar, ele para com o que já fez e o run-info registra (`stopped_reason`).
 git switch main
 git pull
 
-# 2. preencher FT2_ADAPTER_REVISION com o commit do adapter v2 (o agente te passa o valor)
+# 2. conferir a 1ª célula: o commit do adapter v2 já vem preenchido, e PART = "a"
 $nb = (Resolve-Path notebooks/06_final_v2.ipynb).Path
-$rev = "<commit de 40 caracteres do adapter v2>"
-$text = [IO.File]::ReadAllText($nb)
-$text = $text.Replace('PREENCHER_COM_O_COMMIT_DO_ADAPTER_V2', $rev)
-[IO.File]::WriteAllText($nb, $text)   # UTF-8 sem BOM, como o arquivo original
 Select-String -Path $nb -Pattern 'FT2_ADAPTER_REVISION = |PART = '
+#    deve mostrar FT2_ADAPTER_REVISION = \"beeb19b5b4331ff048c6be0f03b9d53476d509ab\"
 
 # 3. (opcional, recomendado) ensaio de ~15 min: LIMIT = 3 na 1ª célula, push do (a),
 #    conferir o log e os 10 JSONL, e voltar para LIMIT = None (sem commitar o ensaio).
@@ -504,9 +502,9 @@ Get-ChildItem kaggle-final-a, kaggle-final-b
 Copy-Item kaggle-final-a/*__test.jsonl, kaggle-final-a/run-info__*__test.json results/predictions/
 Copy-Item kaggle-final-b/*__test.jsonl, kaggle-final-b/run-info__*__test.json results/predictions/
 
-# 9. branch, commit e push (com o notebook já com o commit do adapter v2 e PART = "a")
+# 9. branch, commit e push (o notebook volta com PART = "a"; não precisa ir no commit)
 git switch -c m17-results
-git add results/predictions/*__test.jsonl results/predictions/run-info__*__test.json notebooks/06_final_v2.ipynb
+git add results/predictions/*__test.jsonl results/predictions/run-info__*__test.json
 git commit -m "chore(results): previsões do teste final v2 (M17)"
 git push -u origin m17-results
 ```
@@ -514,7 +512,7 @@ git push -u origin m17-results
 `--accelerator NvidiaTeslaT4` é o "GPU T4 ×2" da Kaggle CLI (o mesmo do
 `machine_shape` dos dois `kernel-metadata.json`); no kernel (a), o notebook usa só a 1ª
 GPU. Pela interface web: importe o notebook, *Accelerator → GPU T4 x2*, *Internet → On*,
-ajuste `PART` e `FT2_ADAPTER_REVISION` na 1ª célula e *Save Version → Save & Run All*.
+ajuste `PART` na 1ª célula e *Save Version → Save & Run All*.
 
 Esperado: 10 JSONL do (a) (`<sistema>__test.jsonl` e `<sistema>+retry__test.jsonl` dos 5
 sistemas) e 2 do (b), cada um com 150 linhas, e um `run-info` para cada. Depois

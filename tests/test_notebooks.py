@@ -384,7 +384,9 @@ def test_large_part_split_covers_every_model():
 
 FINAL = "06_final_v2.ipynb"
 FT2_SYSTEM = "ft2-qwen2.5-coder-1.5b-instruct"
-# Até a Isabela publicar o adapter v2; depois, o commit dele (40 caracteres hexadecimais).
+# Commit do adapter v2 publicado no HF (belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2).
+FT2_REVISION = "beeb19b5b4331ff048c6be0f03b9d53476d509ab"
+# Um valor não preenchido, para provar que a guarda do notebook falha com mensagem clara.
 FT2_PLACEHOLDER = "PREENCHER_COM_O_COMMIT_DO_ADAPTER_V2"
 
 
@@ -400,7 +402,7 @@ def test_final_parameters_defaults():
     assert params["PART"] == "a" and params["RESUME_DIR"] is None
     assert params["DTYPE"] == "float16" and params["OUT_DIR"] == "/kaggle/working"
     revision = params["FT2_ADAPTER_REVISION"]
-    assert revision == FT2_PLACEHOLDER or re.fullmatch(r"[0-9a-f]{40}", revision)
+    assert revision == FT2_REVISION  # o adapter v2 publicado, fixado por commit
 
 
 def test_final_systems_reuse_the_m14_checkpoints():
@@ -497,11 +499,11 @@ def test_final_notebook_flow():
             assert cell["outputs"] == [] and cell["execution_count"] is None
 
 
-def test_final_part_and_revision_lines_are_unique_for_the_powershell_edit():
-    # notebooks/README.md troca estas linhas com -replace; cada uma aparece 1 vez no JSON
+def test_final_part_line_is_unique_for_the_powershell_edit():
+    # notebooks/README.md troca a linha de PART com .Replace; ela aparece 1 vez no JSON
     raw = (NOTEBOOKS / FINAL).read_text(encoding="utf-8")
     assert raw.count('PART = \\"a\\"') == 1
     revision = exec_parameters(FINAL)["FT2_ADAPTER_REVISION"]
     assert raw.count(f'FT2_ADAPTER_REVISION = \\"{revision}\\"') == 1
     readme = (NOTEBOOKS / "README.md").read_text(encoding="utf-8")
-    assert FT2_PLACEHOLDER in readme and "final-v2a" in readme and "final-v2b" in readme
+    assert FT2_REVISION in readme and "final-v2a" in readme and "final-v2b" in readme
