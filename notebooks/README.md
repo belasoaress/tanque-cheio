@@ -583,3 +583,33 @@ para `belasoares/tanque-cheio-test-predict`.
 
 Depois de (a) e (b), abra os links da seção "Links" do `README.md` e confira se todos
 respondem.
+
+## Cards da v2 (M18)
+
+> **Regra 5:** publicar no HF exige a aprovação da Isabela. Os passos abaixo (👤) são
+> para ela, no PowerShell, na raiz do repositório, depois do merge do M18 na `main`.
+
+Só os cards (o `README.md` de cada repo) mudam; os pesos não. O
+`FT2_ADAPTER_REVISION` do `06_final_v2.ipynb` e o `ADAPTER_REVISION` do
+`04_test_predict.ipynb` continuam apontando para os commits antigos dos pesos, que não
+mudam com um upload só do card.
+
+```powershell
+# 1. main atualizada (com o M18 já no merge)
+git switch main
+git pull
+
+# 2. login (se ainda não estiver logada)
+uv run hf auth whoami   # deve mostrar belasoares (se não: uv run hf auth login)
+
+# 3. card do adapter v2 (novo: resultados no teste, comparação com os grandes, limitações)
+uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2 hf/model-v2/README.md README.md --commit-message "Model card v2 (M18)"
+
+# 4. card do adapter v1 (nota apontando para o v2 e o v1 reavaliado no teste v2: 76,0%)
+uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora hf/model/README.md README.md --commit-message "Nota sobre o adapter v2 (M18)"
+```
+
+Depois, abra as duas páginas no HF e confira se a tabela e os links aparecem. O dataset
+`belasoares/tanque-cheio` continua pendente desde o M8: siga a seção "Publicação (M8)"
+acima, começando pela conferência da licença no dados.gov.br. O card do dataset
+(`hf/dataset/README.md`) já descreve o treino v2 (10.448 pares).

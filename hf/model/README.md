@@ -28,6 +28,14 @@ consulta SQL para DuckDB. Ele foi treinado com QLoRA na GPU gratuita do Kaggle e
 do projeto [tanque-cheio](https://github.com/belasoaress/tanque-cheio), onde estão o
 código, os dados de avaliação e o relatório completo.
 
+> **Há uma versão nova:**
+> [`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2),
+> com 80,7% de EX no mesmo teste (este adapter: 76,0%; diferença não significativa,
+> McNemar p = 0,12). Na v2 do projeto, este adapter foi reavaliado no teste com as regras
+> novas (`max_new_tokens = 384` e uma nova tentativa depois de erro): **76,0%** (IC 95%
+> 68,7–82,7%), o mesmo número da v1, contra 78,0% do Qwen2.5-Coder-32B-Instruct sem
+> ajuste (empate estatístico, p = 0,74). Os números abaixo são os da v1 (256 tokens).
+
 ## Resultados
 
 Teste com 150 perguntas escritas e revisadas à mão (50 fáceis, 60 médias, 40 difíceis),

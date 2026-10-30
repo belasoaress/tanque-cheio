@@ -15,7 +15,7 @@ tags:
 - anp
 - combustiveis
 size_categories:
-- 1K<n<10K
+- 10K<n<100K
 - 1M<n<10M
 configs:
 - config_name: pairs
@@ -36,14 +36,17 @@ configs:
 # tanque-cheio: text-to-SQL em português sobre os preços de combustíveis da ANP
 
 Portuguese text-to-SQL pairs over a fixed snapshot of Brazil's ANP fuel price survey
-(Oct 2024 to Sep 2026), plus the snapshot itself. 8,217 template-generated training pairs
+(Oct 2024 to Sep 2026), plus the snapshot itself. 10,448 template-generated training pairs (v2)
 and 200 hand-reviewed dev/test questions, all validated by execution on DuckDB.
 
 Este dataset acompanha o projeto [tanque-cheio](https://github.com/belasoaress/tanque-cheio):
 perguntas em português sobre preços de combustíveis, a SQL (DuckDB) que responde cada
 uma e o snapshot dos dados da ANP sobre o qual as SQLs rodam. Foi usado para treinar e
-avaliar o adapter
-[`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora).
+avaliar os adapters
+[`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2)
+(treinado com o `train` daqui) e
+[`belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora`](https://huggingface.co/belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora)
+(treinado com o treino v1, de 8.217 pares, que fica no histórico do repositório).
 
 ## Fonte e atribuição
 
@@ -60,7 +63,11 @@ publicação oficial da ANP.
 8.777/2016, com atribuição à ANP. A página do conjunto na ANP não traz um campo de
 licença; o espelho CKAN do catálogo dados.gov.br
 ([data.amerigeoss.org](https://data.amerigeoss.org/dataset/serie-historica-de-precos-de-combustiveis-por-revenda))
-indica "Creative Commons Attribution". Quem reusar os dados deve citar a ANP como fonte. As
+indica "Creative Commons Attribution". **Essa licença ainda não foi confirmada na fonte:**
+o dados.gov.br não estava acessível quando o card foi escrito, e a autora ainda vai
+conferir o campo "Licença" lá. Até isso acontecer, o card declara `license: other`, com
+link para a página da ANP, em vez de afirmar CC BY. Quem reusar os dados deve citar a ANP
+como fonte. As
 perguntas e SQLs (`data/*.jsonl`) foram escritas pelo projeto e seguem a mesma licença,
 para não criar uma regra diferente para cada arquivo.
 
@@ -68,7 +75,7 @@ para não criar uma regra diferente para cada arquivo.
 
 | Arquivo | Conteúdo |
 |---|---|
-| `data/train.jsonl` | 8.217 pares de treino, gerados por templates (`source = synthetic`) |
+| `data/train.jsonl` | 10.448 pares de treino (v2), gerados por templates (`source = synthetic`) |
 | `data/dev.jsonl` | 50 perguntas de desenvolvimento, revisadas (`source = human_reviewed`) |
 | `data/test.jsonl` | 150 perguntas de teste, revisadas (`source = human_reviewed`) |
 | `snapshot/coletas-2026-09.parquet` | Snapshot normalizado: 1.652.562 coletas, 2024-10-01 a 2026-09-30 (~2,4 MB) |
@@ -152,7 +159,7 @@ Cada linha dos `.jsonl`:
 
 | Split | N | Fácil / médio / difícil | Com janela | Origem |
 |---|---|---|---|---|
-| `train` | 8.217 | 2.810 / 3.307 / 2.100 | 311 | Templates com valores reais do banco |
+| `train` | 10.448 | 2.937 / 3.787 / 3.724 | 632 | Templates com valores reais do banco (v2) |
 | `dev` | 50 | 15 / 20 / 15 | 3 | Escrito e revisado à mão |
 | `test` | 150 | 50 / 60 / 40 | 8 | Escrito e revisado à mão |
 
@@ -160,15 +167,19 @@ Cada linha dos `.jsonl`:
   de código, sem API paga) e revisadas uma a uma pela autora: a pergunta é natural e sem
   ambiguidade, a SQL responde exatamente a ela, o nível e `order_matters` estão certos.
   Toda SQL de referência executa e devolve linhas. O dev foi usado
-  para escolher o modelo base e conferir o fine-tuning; o teste, uma vez só, no relatório
-  final.
-- **Treino.** Gerado por templates parametrizados (`tanque gen templates --n 10000 --seed 42`):
-  40 intenções, cada uma com um template de SQL e várias redações de pergunta, preenchidos
-  com valores sorteados do banco. Cada par passou por parse, guardrail e execução (o
-  resultado não pode ser vazio). Depois, dois filtros: **vazamento** contra dev e teste
-  (pergunta com `rapidfuzz.token_set_ratio ≥ 85` ou SQL normalizada idêntica: 1.783 dos
-  10.000 pares descartados) e duplicatas internas. Uma auditoria manual de 50 pares
-  sorteados aprovou 49. Estatísticas por intenção:
+  para escolher o modelo base e conferir o fine-tuning; o teste, uma vez por sistema, no
+  relatório final da v1 e de novo no da v2. As decisões da v2 usaram o dev2 (o dev mais
+  63 perguntas revisadas, 113 no total), que fica no repositório do projeto
+  (`datasets/dev2.jsonl`) e não entra aqui.
+- **Treino (v2).** Gerado por templates parametrizados
+  (`tanque gen templates --n 13000 --seed 42`): 57 intenções (as 40 da v1 mais 17 para os
+  padrões que o adapter v1 errava no dev2), cada uma com um template de SQL e várias
+  redações de pergunta, preenchidos com valores sorteados do banco. Cada par passou por
+  parse, guardrail e execução (o resultado não pode ser vazio). Depois, dois filtros:
+  **vazamento** contra dev, dev2 e teste (pergunta com `rapidfuzz.token_set_ratio ≥ 85` ou
+  SQL normalizada idêntica: 2.552 dos 13.000 pares descartados) e duplicatas internas. O
+  treino v1 (8.217 pares, 40 intenções; uma auditoria manual de 50 pares sorteados aprovou
+  49) está no histórico do repositório. Estatísticas por intenção:
   [`results/gen-stats.md`](https://github.com/belasoaress/tanque-cheio/blob/main/results/gen-stats.md).
 
 ## Reproduzir
