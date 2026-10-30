@@ -31,7 +31,7 @@ from typing import Any
 
 # Commit do tanque-cheio de onde vêm o pacote (app/requirements.txt), a configuração,
 # o manifest e o snapshot. Os dois precisam ser o MESMO commit.
-TANQUE_COMMIT = "78029d259dfb0a69ff5256dafd7f3c6cb34dd1a5"
+TANQUE_COMMIT = "5dd91620007571de815cf39901a00df79a1e9442"
 RAW_BASE = "https://raw.githubusercontent.com/belasoaress/tanque-cheio"
 SNAPSHOT = "snapshot/coletas-2026-09.parquet"
 SNAPSHOT_META = "snapshot/coletas-2026-09.json"

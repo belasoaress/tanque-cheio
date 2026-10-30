@@ -28,7 +28,7 @@ uv sync
 | llama.cpp (conversor) | tag `b11312` (`0c1e570`), a mesma que o `llama-cpp-python` 0.3.36 embute |
 | `llama-cpp-python` | 0.3.36, wheel CPU do índice oficial (`abetlen.github.io/llama-cpp-python/whl/cpu`) |
 | Gradio | 6.30.0 (`sdk_version` do Space), Python 3.11 |
-| Pacote `tanque` no Space | commit `78029d259dfb0a69ff5256dafd7f3c6cb34dd1a5` (o mesmo de `TANQUE_COMMIT`) |
+| Pacote `tanque` no Space | commit `5dd91620007571de815cf39901a00df79a1e9442` (o mesmo de `TANQUE_COMMIT`) |
 | GGUF no Space | variável `GGUF_REVISION` (passo b.3) |
 
 ## (a) GGUF no Kaggle
@@ -151,7 +151,7 @@ Na página do Space, aba **Logs**: o *Build* instala o `requirements.txt` (~3–
 do GitHub (2,4 MB), monta o banco (~10 s), baixa o GGUF (~1 GB) e aquece o prompt. O
 Space fica *Running* quando aparece `Running on local URL: http://0.0.0.0:7860`.
 
-Se o build falhar em `tanque @ git+https://...`, confira se o commit `78029d2` ainda
+Se o build falhar em `tanque @ git+https://...`, confira se o commit `5dd9162` ainda
 existe na `main` do GitHub (ele é público e não deve ser reescrito).
 
 ## (c) Conferir as 6 perguntas e o tempo (R24)

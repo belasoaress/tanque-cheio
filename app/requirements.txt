@@ -12,4 +12,4 @@ polars==2.1.0
 pyarrow==26.0.0
 # O MESMO commit de TANQUE_COMMIT em app/tanque_demo.py (prompt, guardrail, execução,
 # nova tentativa e montagem do banco).
-tanque @ git+https://github.com/belasoaress/tanque-cheio@78029d259dfb0a69ff5256dafd7f3c6cb34dd1a5
+tanque @ git+https://github.com/belasoaress/tanque-cheio@5dd91620007571de815cf39901a00df79a1e9442
