@@ -96,9 +96,9 @@ desenvolvimento e escrevi templates novos para cobrir exatamente aqueles padrõe
 No desenvolvimento, a acurácia foi de 74,3% (versão 1) para 96,5% (versão 2). No teste, ficou em 80,7%.
 
 A queda de 16 pontos é sobreajuste. Não às perguntas, que o filtro barrava, mas ao estilo
-dos erros. Eu caí nisso mesmo sabendo do risco, e é exatamente por isso que o teste
-ficou trancado até o fim. Se eu tivesse decidido olhando o teste, não teria um número
-honesto para mostrar.
+dos erros. Eu caí nisso mesmo sabendo do risco, e é exatamente por isso que o teste não
+guiou nenhuma decisão: todas vieram do conjunto de desenvolvimento, e o teste só rodou no
+fim. Se eu tivesse decidido olhando o teste, não teria um número honesto para mostrar.
 
 A segunda lição veio da métrica. A acurácia de execução exige as mesmas colunas da
 referência. Defini antes dos resultados uma versão tolerante, que aceita colunas a mais.

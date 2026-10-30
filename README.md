@@ -97,7 +97,8 @@ A v1 (M0–M8) levou o 1,5B de 12% para 76% no teste. A v2 mudou seis coisas:
 **A lição do dev2.** No dev2, o ft-v2 acertava 96,5%. No teste, 80,7%. A queda de ~16
 p.p. é sobreajuste ao dev2: desenhei os templates novos a partir dos erros do ft-v1 no
 dev2. O filtro de vazamento barra perguntas quase iguais, mas não o mesmo padrão. O
-plano já previa um número otimista, e por isso o teste ficou fechado até o fim.
+plano já previa um número otimista, e por isso o teste não guiou nenhuma decisão da v2:
+todas vieram do dev2, e o teste só rodou no fim, uma vez por sistema (D33).
 
 **O ganho do v2 sobre o v1 não é significativo.** São +4,7 p.p. (11 perguntas só o v2
 acerta, 4 só o v1), com p = 0,12. Com 150 perguntas, não dá para afirmar que o v2 é
