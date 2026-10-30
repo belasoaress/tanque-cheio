@@ -1,15 +1,18 @@
-"""Modelos maiores no dev2 (M14; plan.md v2, D26, D27, D35, D37).
+"""Modelos maiores no dev2 (M14) e teste final v2 (M17; plan.md v2, D26, D27, D35, D37).
 
-Lógica do notebook `05_large_baselines.ipynb`, aqui para ser testada sem GPU
-(`tests/test_infer_large.py`). O notebook monta a lista de modelos (`MODELS`,
-na 1ª célula) e chama `run_spec` para cada um, em ordem; cada chamada usa
+Lógica dos notebooks `05_large_baselines.ipynb` (dev2) e `06_final_v2.ipynb`
+(teste), aqui para ser testada sem GPU (`tests/test_infer_large.py`). O notebook
+monta a lista de modelos (`MODELS`, na 1ª célula) e chama `run_spec` para cada
+um, em ordem, com o dataset do notebook (`DATASET`); cada chamada usa
 `local.run_predictions` (prompt único, gulosa, `max_new_tokens = 384`,
 autocorreção com 1 nova tentativa) e grava os run-info.
 
 Cada modelo é um dicionário (`spec`):
 
 - `model_id`, `revision` (commit fixado no Hugging Face);
-- `adapter_id`, `adapter_revision` (opcionais: o ft-v1, fundido);
+- `adapter_id`, `adapter_revision` (opcionais: o ft-v1 ou o ft-v2, fundido);
+- `system` (opcional): nome do sistema; sem ele, `base-<modelo>` ou
+  `ft-<modelo>` (o ft-v2 usa `ft2-<modelo>`, seção 5.3 da v2);
 - `quantization`: `None` (fp16) ou `"nf4"` (D27);
 - `gpus`: 1 (`device_map={"": 0}`) ou 2 (`device_map="auto"`, com `max_memory`
   opcional por GPU);
@@ -33,6 +36,7 @@ checkpoint é apagado, para o próximo caber no disco.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import time
 from collections.abc import Callable, Iterable
@@ -67,8 +71,41 @@ def select_models(models: Iterable[dict[str, Any]], part: str = "all") -> list[d
 
 
 def system_of(spec: dict[str, Any]) -> str:
-    """Nome do sistema pelo modelo pedido (não pelo checkpoint reserva)."""
+    """`spec["system"]`, ou o nome pelo modelo pedido (não pelo checkpoint reserva)."""
+    if spec.get("system"):
+        return str(spec["system"])
     return local.system_name(spec["model_id"], spec.get("adapter_id"))
+
+
+COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+
+
+def unpinned(specs: Iterable[dict[str, Any]]) -> list[str]:
+    """Problemas de fixação: `revision` (e `adapter_revision`, com adapter) que não são commits.
+
+    Regra 0.8: no teste, todo checkpoint e todo adapter vão fixados por commit
+    (40 caracteres hexadecimais). Um placeholder (ex.: `"PREENCHER"`) ou `None`
+    entra na lista.
+    """
+    problems = []
+    for spec in specs:
+        keys = ["revision"] + (["adapter_revision"] if spec.get("adapter_id") else [])
+        for key in keys:
+            value = spec.get(key)
+            if not (isinstance(value, str) and COMMIT_RE.fullmatch(value)):
+                repo = spec["adapter_id"] if key == "adapter_revision" else spec["model_id"]
+                problems.append(f"{system_of(spec)}: {key} de {repo} = {value!r}")
+    return problems
+
+
+def require_pinned(specs: Iterable[dict[str, Any]]) -> None:
+    """Levanta `ValueError` se algum modelo selecionado não tem commit fixado."""
+    problems = unpinned(specs)
+    if problems:
+        raise ValueError(
+            "Todo checkpoint e adapter do teste precisa de commit fixado (40 caracteres "
+            "hexadecimais): " + "; ".join(problems)
+        )
 
 
 def checkpoint_bytes(

@@ -526,3 +526,47 @@ def test_spec_can_override_device_and_dtype_for_the_cpu_rehearsal(tmp_path, monk
     _run_spec(spec, tmp_path, run, gpu_count=lambda: 0)
     assert calls[0]["device"] == "cpu" and calls[0]["dtype"] == "float32"
     assert calls[0]["time_budget_s"] == 0.0
+
+
+# --- M17: teste final v2 (06_final_v2.ipynb) ---------------------------------------
+
+SPEC_FT2 = {
+    "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+    "revision": "2e1fd397ee46e1388853d2af2c993145b0f1098a",
+    "adapter_id": "belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2",
+    "adapter_revision": "a" * 40,
+    "system": "ft2-qwen2.5-coder-1.5b-instruct",
+    "gpus": 1,
+    "part": "a",
+}
+
+
+def test_spec_can_name_its_system_ft2(tmp_path, monkeypatch):
+    # o adapter v2 daria `ft-...` pelo nome; o sistema da v2 é `ft2-...` (5.3 v2)
+    assert large.system_of(SPEC_FT2) == "ft2-qwen2.5-coder-1.5b-instruct"
+    monkeypatch.setattr(local, "_free_cuda", lambda: None)
+    calls = []
+
+    def run(dataset, model_id, **kwargs):
+        calls.append(kwargs)
+        return {"system": kwargs["system"], "path": "p"}
+
+    _run_spec(SPEC_FT2, tmp_path, run)
+    assert calls[0]["system"] == "ft2-qwen2.5-coder-1.5b-instruct"
+    assert calls[0]["adapter_revision"] == "a" * 40
+    skipped = _run_spec(SPEC_FT2, tmp_path, run, gpu_count=lambda: 0)
+    assert skipped["system"] == "ft2-qwen2.5-coder-1.5b-instruct"
+    assert skipped["path"].endswith("ft2-qwen2.5-coder-1.5b-instruct__dev2.jsonl")
+
+
+def test_unpinned_lists_placeholders_and_missing_commits():
+    assert large.unpinned([SPEC_7B | {"revision": "c" * 40}, SPEC_FT2]) == []
+    placeholder = SPEC_FT2 | {"adapter_revision": "PREENCHER"}
+    problems = large.unpinned([placeholder, SPEC_7B | {"revision": None}])
+    assert len(problems) == 2
+    assert "ft2-qwen2.5-coder-1.5b-instruct" in problems[0] and "adapter_revision" in problems[0]
+    assert "'PREENCHER'" in problems[0]
+    assert "base-qwen2.5-coder-7b-instruct" in problems[1] and "revision" in problems[1]
+    with pytest.raises(ValueError, match="commit fixado"):
+        large.require_pinned([placeholder])
+    large.require_pinned([SPEC_FT2])  # tudo fixado: não levanta

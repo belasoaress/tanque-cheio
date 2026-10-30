@@ -22,6 +22,15 @@ terceiro sistema (`claude-*__test.jsonl`, D24) entra sozinho quando for pontuado
 rígida no teste (empate: a ordem dos sistemas). Para fixar outro, `--final-system` no
 `tanque eval report` ou `[report].final_system` em `configs/settings.toml`.
 
+**Destaques do teste (M17):** antes da tabela completa de comparações pareadas, o
+modelo final (`[report].final_system`, se configurado; senão o `ft*` single-shot mais
+novo, o `ft2-*` na v2) contra o maior `base-*`, os outros `ft*` do mesmo modelo e o
+segundo maior `base-*` (na v2: ft2 × 32B, ft2 × ft, ft2 × 14B), com Δ orientado a partir
+do final.
+
+**Previsões do teste da v1** ficam em `results/predictions/v1/` (fora do glob do
+`check-metrics`): o teste v2 as substitui (D33), e a nota de método cita os números.
+
 **Custo por 1.000 perguntas.** Para sistemas de API, `cost_per_1k_usd` das
 previsões (custo real, pelo `pricing.toml`). Para modelos locais medidos numa T4
 (`hardware` em `[gpu_cost].hardware`), estimativa: latência média × 1.000 /
@@ -54,6 +63,9 @@ MISSING = "—"
 ESTIMATE_MARK = "*"
 UNMERGED_MARK = "†"
 N_EXAMPLES = 10
+# EX no teste da v1 (M7: base → ft-v1, 256 tokens, sem nova tentativa), hoje em
+# results/predictions/v1/ e no histórico; o teste v2 substitui esses números (D33).
+V1_TEST_EX = "12,0% → 76,0%"
 MS_PER_HOUR = 3_600_000
 LEVELS = (("facil", "fácil"), ("medio", "médio"), ("dificil", "difícil"))
 
@@ -72,6 +84,8 @@ COLUMNS = (
     "Bloqueada",
     "p50 (ms)",
     "p95 (ms)",
+    "GPUs",
+    "Pico GPU (GiB)",
     "US$ / 1.000",
 )
 
@@ -216,6 +230,8 @@ def _row(
         _pct(m.get("blocked_rate")),
         _num(latency.get("p50"), 0) + mark,
         _num(latency.get("p95"), 0) + mark,
+        str(m["gpus"]) if m.get("gpus") is not None else MISSING,
+        _num(m.get("peak_gpu_mem_gib"), 1),
         _cost_cell(m, gpu),
     ]
 
@@ -340,6 +356,89 @@ def paired_table(metrics: dict[str, Any], split: str) -> list[str]:
             ]
         )
     return _table(PAIRED_COLUMNS, rows) if rows else []
+
+
+HIGHLIGHT_COLUMNS = (
+    "Modelo final",
+    "Outro",
+    "N",
+    "EX final",
+    "EX outro",
+    "Δ EX (final − outro)",
+    "Só final",
+    "Só outro",
+    "p (McNemar)",
+)
+
+
+def _model_part(system: str) -> str:
+    """`qwen2.5-coder-1.5b-instruct` de `ft2-qwen2.5-coder-1.5b-instruct`."""
+    return system.split("-", 1)[1] if "-" in system else system
+
+
+def highlight_anchor(systems: list[str], configured: str | None = None) -> str | None:
+    """Sistema dos destaques: `configured` (se pontuado) ou o `ft*` single-shot mais novo.
+
+    Mais novo = o último na ordem dos sistemas (`ft2-*` depois de `ft-*`): o ajustado
+    da v2, se houver.
+    """
+    singles = [s for s in systems if not is_retry(s)]
+    if configured and configured in singles:
+        return configured
+    fts = sorted((s for s in singles if s.startswith(FT_PREFIXES)), key=system_sort_key)
+    return fts[-1] if fts else None
+
+
+def highlight_targets(anchor: str, systems: list[str]) -> list[str]:
+    """Contra quem o modelo final é destacado: o maior base, os outros `ft*` do mesmo
+    modelo e o segundo maior base (na v2: 32B, ft-v1, 14B)."""
+    singles = [s for s in systems if not is_retry(s) and s != anchor]
+    bases = sorted(
+        (s for s in singles if s.startswith("base-")),
+        key=lambda s: (-system_sort_key(s)[2], system_sort_key(s)),
+    )
+    fts = [
+        s
+        for s in sorted(singles, key=system_sort_key)
+        if s.startswith(FT_PREFIXES) and _model_part(s) == _model_part(anchor)
+    ]
+    return bases[:1] + fts + bases[1:2]
+
+
+def highlight_table(metrics: dict[str, Any], split: str, anchor: str) -> list[str]:
+    """Comparações pareadas do `anchor` com `highlight_targets`, orientadas a partir dele."""
+    systems = system_metrics(metrics)
+    by_pair = {
+        frozenset((str(c["a"]), str(c["b"]))): c
+        for c in metrics.get(COMPARISONS_KEY) or []
+        if c.get("split") == split
+    }
+    rows = []
+    for other in highlight_targets(anchor, systems_with(metrics, split)):
+        c = by_pair.get(frozenset((anchor, other)))
+        if c is None:
+            continue
+        flip = str(c["a"]) == anchor  # delta_ex é b − a; aqui é final − outro
+        delta = c.get("delta_ex")
+        if delta is not None:
+            delta = -float(delta) if flip else float(delta)
+        only_final, only_other = (
+            (c.get("a_only"), c.get("b_only")) if flip else (c.get("b_only"), c.get("a_only"))
+        )
+        rows.append(
+            [
+                f"`{anchor}`",
+                f"`{other}`",
+                str(c.get("n", MISSING)),
+                _pct((systems.get(anchor, {}).get(split) or {}).get("ex")),
+                _pct((systems.get(other, {}).get(split) or {}).get("ex")),
+                _signed(None if delta is None else delta * 100, 1, " p.p."),
+                str(MISSING if only_final is None else only_final),
+                str(MISSING if only_other is None else only_other),
+                _p_value(c.get("mcnemar_p")),
+            ]
+        )
+    return _table(HIGHLIGHT_COLUMNS, rows) if rows else []
 
 
 # --- exemplos de erro -----------------------------------------------------------
@@ -509,8 +608,8 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
         )
     lines += [
         "- **Prompt único** (`tanque.prompting.build_prompt`, seção 5.4) para todos os "
-        "sistemas, pelo chat template de cada modelo; decodificação gulosa, "
-        "`max_new_tokens = 256`, lote de 1 pergunta.",
+        "sistemas, pelo chat template de cada modelo; decodificação gulosa, lote de 1 "
+        "pergunta, `max_new_tokens = 384` no teste v2 e no dev2 (D31; no dev da v1 eram 256).",
         "- **Métrica:** EX = execution accuracy (seção 5.6): a SQL prevista é executada com "
         "o guardrail e comparada ao resultado da referência; bloqueio, erro ou falta de "
         "previsão contam como erro. É a métrica principal (EX rígida): o número de colunas "
@@ -529,12 +628,21 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
         "no mesmo split, mais cada sistema × a sua versão `+retry`; pergunta a pergunta, na "
         "EX rígida. Só A / Só B = perguntas que só um dos dois acerta; p = teste de McNemar "
         "exato (binomial, bilateral) sobre esses pares discordantes. p < 0,05 indica "
-        "diferença dificilmente explicada pelo acaso.",
-        "- **Modelos locais:** `base-*` (sem treino) e `ft-*` (mesmo base + adapter LoRA do "
-        "M6, fundido no base antes de gerar), na mesma sessão do Kaggle e na mesma GPU, "
-        "fp16. Hardware das previsões do teste: "
+        "diferença dificilmente explicada pelo acaso. Os destaques do teste orientam cada "
+        "par a partir do modelo final (Δ = final − outro).",
+        "- **Modelos locais (D26):** todos da família Qwen2.5-Coder-Instruct (mesmo "
+        "tokenizer), sem ajuste (`base-*`) ou com adapter LoRA fundido no base antes de "
+        "gerar: `ft-*` = adapter v1 (M6), `ft2-*` = adapter v2 (M15). O 1,5B roda em fp16. "
+        "Hardware das previsões do teste: "
         + (", ".join(f"`{h}`" for h in hardware) if hardware else MISSING)
-        + ". A latência é medida por pergunta, do template à decodificação, numa T4.",
+        + ". A latência é medida por pergunta, do template à decodificação, numa T4 (o 32B, "
+        "em 2). Pico GPU = maior memória alocada numa GPU durante a execução (no 32B, por "
+        "GPU).",
+        "- **Modelos grandes em 4 bits (D27):** o 7B, o 14B e o 32B rodam quantizados em "
+        "nf4 (bitsandbytes, quantização dupla, computação em fp16), o 7B e o 14B numa T4 e o "
+        '32B em 2 T4 (`device_map="auto"`), porque é o que cabe nas GPUs grátis do Kaggle. '
+        "A quantização pode tirar alguns pontos deles: os números dos grandes são um piso "
+        "do que fariam em fp16.",
     ]
     if any(is_retry(s) for s in system_metrics(metrics)):
         lines.append(
@@ -553,7 +661,9 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
             f"- **Custo por 1.000 perguntas ({ESTIMATE_MARK} = estimativa):** latência média × "
             f"1.000 ÷ 3.600.000 ms/h × US$ {_num(ctx.gpu.hour_usd, 2)}/h, o preço de "
             f"{ctx.gpu.gpu} em {ctx.gpu.source_url} (consultado em {ctx.gpu.checked_on}); "
-            f"{vm}. No Kaggle a execução não custou nada; as previsões têm `cost_usd = 0`."
+            f"{vm}. O preço é por GPU (D35): o 32B, em 2 T4, paga "
+            f"US$ {_num(2 * ctx.gpu.hour_usd, 2)}/h. No Kaggle a execução não custou nada; as "
+            "previsões têm `cost_usd = 0`."
         )
     if has_api:
         lines.append(
@@ -564,7 +674,7 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
     else:
         lines.append(
             "- **Sem LLM de fronteira por enquanto (D24):** sem crédito de API, o relatório "
-            "compara só os 2 sistemas locais. `tanque infer claude` continua no repositório; "
+            "compara só os sistemas locais. `tanque infer claude` continua no repositório; "
             "se `results/predictions/claude-*__test.jsonl` for adicionado e pontuado, ele "
             "entra nas tabelas sozinho."
         )
@@ -573,10 +683,20 @@ def _method_note(metrics: dict[str, Any], ctx: ReportContext) -> list[str]:
             f"- **Gasto total do projeto em API:** US$ {_num(ctx.spent_usd, 2)} "
             "(`results/spend.jsonl`; `tanque budget status`)."
         )
-    lines.append(
-        "- **Dev × teste:** o dev (50) foi usado na escolha do modelo (M5) e do fine-tuning "
-        "(M6); o teste (150) só aqui, uma vez por sistema."
-    )
+    lines += [
+        "- **Teste reaberto na v2 (D33):** o teste (150) já tinha sido usado uma vez na v1 "
+        "(M7), com o base e o ft-v1, `max_new_tokens = 256` e sem nova tentativa. Na v2 ele "
+        "foi reaberto uma vez por sistema, e o base e o ft-v1 foram reexecutados com as "
+        "regras da v2 (384 tokens, nova tentativa): os números do teste deste relatório "
+        f"substituem os da v1. Os da v1 (EX {V1_TEST_EX}, citados no README como v1) ficam "
+        "no histórico do git e em `results/predictions/v1/`, fora do `check-metrics`. Todas "
+        "as decisões da v2 (templates do treino v2, hiperparâmetros, prompt de correção, "
+        "modelo final) vieram do dev2, nunca do teste.",
+        "- **Dev × dev2 × teste:** o dev (50) foi usado na escolha do modelo (M5) e do "
+        "fine-tuning (M6). O dev2 (D30) é esse dev mais as perguntas da reserva: como o "
+        "dev2 contém o dev da v1, que já orientou as escolhas da v1, ele pode favorecer os "
+        "ajustados em alguns pontos. O teste é a comparação limpa.",
+    ]
     return lines
 
 
@@ -599,7 +719,8 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
     ]
     test = main_table(metrics, "test", ctx.gpu, ctx.unmerged)
     lines += test or [
-        "_Previsões do teste ainda não pontuadas. Passos 👤 em `notebooks/README.md` (seção M7)._"
+        "_Previsões do teste ainda não pontuadas. Passos 👤 em `notebooks/README.md` (seção "
+        '"Teste final v2 (M17)")._'
     ]
     lines += ["", "## Base → ajustado (teste)", ""]
     pairs = comparison_pairs(metrics, "test")
@@ -611,6 +732,21 @@ def render(metrics: dict[str, Any], ctx: ReportContext | None = None) -> str:
     else:
         lines += ["_Pendente: precisa de `base-*` e `ft-*` pontuados no teste._", ""]
     lines += ["## Comparações pareadas (teste)", ""]
+    anchor = highlight_anchor(
+        systems_with(metrics, "test"), ctx.final_system if ctx.final_configured else None
+    )
+    highlights = highlight_table(metrics, "test", anchor) if anchor else []
+    if highlights:
+        lines += [
+            f"Destaques: `{anchor}` contra o maior modelo sem ajuste, o outro ajustado e o "
+            "segundo maior (Δ = final − outro; Só final / Só outro = perguntas que só um "
+            "dos dois acerta):",
+            "",
+            *highlights,
+            "",
+            "Todas as comparações:",
+            "",
+        ]
     lines += paired_table(metrics, "test") or [
         "_Pendente: precisa de 2 sistemas pontuados no teste (`tanque eval check-metrics "
         "--write`)._"

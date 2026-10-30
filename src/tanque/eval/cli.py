@@ -154,6 +154,49 @@ def report(
     typer.echo(f"Relatório gravado em {out_path}")
 
 
+@app.command("chart")
+def chart(
+    metrics: Annotated[
+        Path | None,
+        typer.Option(help="Arquivo de métricas (padrão: results/metrics.json)."),
+    ] = None,
+    out: Annotated[
+        Path | None, typer.Option(help="PNG do gráfico (padrão: results/ex-vs-cost.png).")
+    ] = None,
+    split: Annotated[str, typer.Option(help="Split dos pontos.")] = "test",
+    check: Annotated[
+        bool,
+        typer.Option(
+            "--check",
+            help="Não desenha: falha se o PNG não foi gerado a partir do metrics.json atual "
+            "(não precisa de matplotlib).",
+        ),
+    ] = False,
+) -> None:
+    """Gera results/ex-vs-cost.png: EX (IC 95%) × custo por 1.000 perguntas, x em log (R22)."""
+    from tanque.eval import chart as chart_mod
+
+    metrics_path = metrics or score_mod.default_metrics_path()
+    out_path = out or chart_mod.default_chart_path()
+    gpu = report_mod.load_gpu_price()
+    pts = chart_mod.points(score_mod.load_metrics(metrics_path), split=split, gpu=gpu)
+    if check:
+        ok, message = chart_mod.check(pts, out_path)
+        typer.echo(message, err=not ok)
+        if not ok:
+            raise typer.Exit(code=1)
+        return
+    if not pts:
+        typer.echo(f"Sem sistemas com EX e custo no split {split!r}: nenhum gráfico gravado.")
+        return
+    try:
+        chart_mod.render(pts, out_path, gpu=gpu, split=split)
+    except RuntimeError as e:
+        typer.echo(f"Erro: {e}", err=True)
+        raise typer.Exit(code=2) from e
+    typer.echo(f"Gráfico gravado em {out_path} ({len(pts)} pontos)")
+
+
 @app.command("check-metrics")
 def check_metrics(
     db: DbOption = None,

@@ -341,6 +341,100 @@ def test_final_system_defaults_to_best_single_shot_ft():
         report.final_system(metrics, candidates, "ft-a+retry")
 
 
+# --- M17: teste final v2 com os 6 sistemas -------------------------------------
+
+V2_SYSTEMS = {
+    "base-qwen2.5-coder-1.5b-instruct": (0.12, 2700.0, 1, 3.1),
+    "base-qwen2.5-coder-7b-instruct": (0.33, 9500.0, 1, 5.7),
+    "base-qwen2.5-coder-14b-instruct": (0.42, 17400.0, 1, 10.2),
+    "base-qwen2.5-coder-32b-instruct": (0.72, 29000.0, 2, 10.8),
+    "ft-qwen2.5-coder-1.5b-instruct": (0.76, 4100.0, 1, 3.1),
+    "ft2-qwen2.5-coder-1.5b-instruct": (0.82, 4200.0, 1, 3.1),
+}
+
+
+def v2_metrics() -> dict:
+    out: dict = {}
+    for system, (ex, p50, gpus, mem) in V2_SYSTEMS.items():
+        m = {**metric(ex, p50, p50), "gpus": gpus, "peak_gpu_mem_gib": mem}
+        out[system] = {"test": m}
+        out[system + "+retry"] = {"test": {**m, "ex": ex + 0.02}}
+    singles = list(V2_SYSTEMS)
+    out["comparisons"] = [
+        {
+            "a": a,
+            "b": b,
+            "split": "test",
+            "n": 150,
+            "a_only": 3,
+            "b_only": 12,
+            "delta_ex": round(V2_SYSTEMS[b][0] - V2_SYSTEMS[a][0], 4),
+            "mcnemar_p": 0.035,
+        }
+        for i, a in enumerate(singles)
+        for b in singles[i + 1 :]
+    ]
+    return out
+
+
+def test_v2_main_table_has_the_six_systems_with_retry_gpus_and_memory():
+    text = report.render(v2_metrics(), report.ReportContext(gpu=GPU))
+    main = text.split("## Tabela principal", 1)[1].split("\n## ", 1)[0]
+    header = next(line for line in main.splitlines() if line.startswith("| Sistema"))
+    assert header.endswith("| p50 (ms) | p95 (ms) | GPUs | Pico GPU (GiB) | US$ / 1.000 |")
+    rows = [line for line in main.splitlines() if line.startswith("| `")]
+    assert len(rows) == 12
+    assert [r.split("`")[1] for r in rows[:2]] == [
+        "base-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-1.5b-instruct+retry",
+    ]
+    big = next(r for r in rows if r.startswith("| `base-qwen2.5-coder-32b-instruct` "))
+    # 2 T4: o custo dobra (D35); 29 s × 1.000 / 3,6 M × 0,70
+    assert big.endswith("| 29.000 | 58.000 | 2 | 10,8 | 5,6389* |")
+    assert "| `ft2-qwen2.5-coder-1.5b-instruct` | test | 150 | 82,0%" in main
+
+
+def test_v2_paired_section_highlights_ft2_against_32b_ft_and_14b():
+    text = report.render(v2_metrics(), report.ReportContext(gpu=GPU))
+    paired = text.split("## Comparações pareadas (teste)", 1)[1].split("\n## ", 1)[0]
+    highlights = paired.split("Todas as comparações", 1)[0]
+    rows = [line for line in highlights.splitlines() if line.startswith("| `")]
+    assert [r.split("`")[3] for r in rows] == [
+        "base-qwen2.5-coder-32b-instruct",
+        "ft-qwen2.5-coder-1.5b-instruct",
+        "base-qwen2.5-coder-14b-instruct",
+    ]
+    # orientado a partir do ft2: Δ = ft2 − outro e "Só ft2" = acertos só do ft2
+    assert rows[0] == (
+        "| `ft2-qwen2.5-coder-1.5b-instruct` | `base-qwen2.5-coder-32b-instruct` | 150 | "
+        "82,0% | 72,0% | +10,0 p.p. | 12 | 3 | 0,035 |"
+    )
+    assert "| Modelo final | Outro | N | EX final | EX outro | Δ EX (final − outro) |" in highlights
+    # a tabela completa continua lá, com os 15 pares single-shot
+    full = paired.split("Todas as comparações", 1)[1]
+    assert len([line for line in full.splitlines() if line.startswith("| `")]) == 15
+
+
+def test_highlight_anchor_prefers_the_configured_final_then_the_newest_ft():
+    systems = ["base-m-1.5b", "ft-m-1.5b", "ft-m-1.5b+retry", "ft2-m-1.5b"]
+    assert report.highlight_anchor(systems) == "ft2-m-1.5b"
+    assert report.highlight_anchor(systems, "ft-m-1.5b") == "ft-m-1.5b"
+    assert report.highlight_anchor(["base-m-1.5b"]) is None
+    assert report.highlight_targets("ft2-m-1.5b", systems) == ["base-m-1.5b", "ft-m-1.5b"]
+
+
+def test_v2_method_note_declares_d27_d33_and_the_dev2_bias():
+    note = report.render(v2_metrics(), report.ReportContext(gpu=GPU)).split("## Nota de método")[1]
+    assert "**Modelos grandes em 4 bits (D27):**" in note and "piso" in note
+    assert "**Teste reaberto na v2 (D33):**" in note
+    assert "substituem os da v1" in note and "histórico do git" in note
+    assert "12,0% → 76,0%" in note and "`results/predictions/v1/`" in note
+    assert "vieram do dev2" in note
+    assert "o dev2 contém o dev da v1" in note
+    assert "`max_new_tokens = 384`" in note
+    assert "US$ 0,70/h" in note
+
+
 def test_paired_table_pending_without_comparisons():
     text = report.render(FAKE, report.ReportContext())
     paired = text.split("## Comparações pareadas (teste)", 1)[1].split("##", 1)[0]
@@ -594,3 +688,20 @@ def test_committed_report_is_up_to_date_with_metrics():
         pytest.skip("previsões do teste presentes: a conferência roda no job de regressão")
     result = _cli("report", "--check")
     assert result.exit_code == 0, result.output
+
+
+def test_v1_test_predictions_are_kept_out_of_the_regression():
+    """M17 (D33): as previsões do teste da v1 ficam em predictions/v1/, fora do check-metrics."""
+    from tanque import config
+
+    preds = config.setting_path("predictions_dir")
+    v1 = sorted(p.name for p in (preds / "v1").glob("*__test.jsonl"))
+    assert v1 == [
+        "base-qwen2.5-coder-1.5b-instruct__test.jsonl",
+        "ft-qwen2.5-coder-1.5b-instruct__test.jsonl",
+    ]
+    committed = score.committed_predictions(preds)
+    assert committed and all(path.parent == preds for _, path in committed)
+    for name in v1:  # 256 tokens, sem retry: não são previsões da v2
+        info = json.loads((preds / "v1" / f"run-info__{name[:-6]}.json").read_text("utf-8"))
+        assert info["max_new_tokens"] == 256

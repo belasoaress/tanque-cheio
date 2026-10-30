@@ -7,6 +7,7 @@
 | `02_finetune.ipynb` | `belasoares/tanque-cheio-finetune` (`kaggle/finetune/`) | QLoRA do modelo base + previsões do adapter no dev (M6) |
 | `04_test_predict.ipynb` | `belasoares/tanque-cheio-test-predict` (`kaggle/test-predict/`) | Previsões finais no teste: base e base + adapter fundido, na mesma sessão (M7) |
 | `05_large_baselines.ipynb` | `belasoares/tanque-cheio-large` (`kaggle/large/`) | 1,5B (base e ft-v1), 7B, 14B e 32B no dev2, com autocorreção, em 2 T4 (M14) |
+| `06_final_v2.ipynb` | `belasoares/tanque-cheio-final-v2a` (`kaggle/final-v2a/`) e `belasoares/tanque-cheio-final-v2b` (`kaggle/final-v2b/`) | Teste final v2: (a) 1,5B base, ft-v1, ft-v2, 7B e 14B numa T4; (b) 32B em 2 T4; com autocorreção (M17) |
 
 Os notebooks instalam o pacote com
 `pip install "tanque @ git+https://github.com/belasoaress/tanque-cheio@<REPO_REF>"`,
@@ -405,6 +406,127 @@ uv run hf upload belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2 kaggle-ft2/a
 
 O `hf upload` cria o repo se ele não existir. Anote o commit que ele imprime: é o
 `ADAPTER_REVISION` do ft-v2 no teste final (M17).
+
+## Teste final v2 (M17): `06_final_v2.ipynb`
+
+Roda os **6 sistemas da v2** no `datasets/test.jsonl` (150 perguntas), com as regras da
+v2 para todos: prompt único, gulosa, `max_new_tokens = 384` (D31) e autocorreção com 1
+nova tentativa (D32). Cada sistema grava `<sistema>__test.jsonl`,
+`<sistema>+retry__test.jsonl` e um `run-info__...json` para cada. O banco é montado do
+snapshot dentro do notebook (~6 s). São **dois kernels do mesmo notebook**, escolhidos por
+`PART` na 1ª célula (D27, D37):
+
+| Kernel | `PART` | GPUs | Sistemas |
+|---|---|---|---|
+| `belasoares/tanque-cheio-final-v2a` | `"a"` (padrão) | 1 T4 (`CUDA_VISIBLE_DEVICES = "0"` antes do torch) | `base-qwen2.5-coder-1.5b-instruct` (fp16), `ft-qwen2.5-coder-1.5b-instruct` (adapter v1 `bd8079f…`, fundido), `ft2-qwen2.5-coder-1.5b-instruct` (adapter v2, fundido), `base-qwen2.5-coder-7b-instruct` e `base-qwen2.5-coder-14b-instruct` (nf4) |
+| `belasoares/tanque-cheio-final-v2b` | `"b"` | 2 T4 (`device_map="auto"`) | `base-qwen2.5-coder-32b-instruct` (nf4), com `TIME_BUDGET_32B_H = 4` e checkpoint por item |
+
+Os checkpoints são os mesmos commits do M14. O teste roda **uma vez por sistema** (regra
+0.6, D33): o base e o ft-v1 já tinham passado por ele na v1 (256 tokens, sem nova
+tentativa); as previsões da v1 foram movidas para `results/predictions/v1/` (fora do
+`check-metrics`), e as da v2 entram com os mesmos nomes em `results/predictions/`.
+
+**O commit do adapter v2.** A 1ª célula já traz
+`FT2_ADAPTER_REVISION = "beeb19b5b4331ff048c6be0f03b9d53476d509ab"`: o commit do repo
+público `belasoares/tanque-cheio-qwen2.5-coder-1.5b-lora-v2` no HF (publicado em
+30/10/2026; adapter LoRA r=16, alpha=32 sobre o Qwen2.5-Coder-1.5B-Instruct). O ft-v2
+venceu o ft-v1 no dev2 (96,5% contra 74,3%, `results/training-v2.md`) e é o candidato do
+teste final. Se um dia publicar outra versão do adapter, troque esse valor na 1ª célula
+pelo commit novo (40 caracteres hexadecimais, aba *Files and versions* do repo). Sem um
+commit válido (ex.: um placeholder como `PREENCHER_COM_O_COMMIT_DO_ADAPTER_V2`), o kernel
+(a) para na 2ª célula, antes de instalar qualquer coisa, com a mensagem
+`FT2_ADAPTER_REVISION não foi preenchido`. O kernel (b) não usa o adapter.
+
+### Estimativa de GPU (150 perguntas)
+
+A partir dos tempos medidos no M14 (run-info dos `*__dev2.json`: tempo total, carga e 113
+perguntas, já com as novas tentativas), escalados para 150 perguntas. O ft-v2 é estimado
+igual ao ft-v1 (mesmo modelo e adapter do mesmo tamanho).
+
+| Kernel | Sistema | s/pergunta no M14 (com retry) | Carga | Total para 150 |
+|---|---|---|---|---|
+| (a) | base 1,5B (fp16) | 5,95 | 24 s | ~15 min |
+| (a) | ft-v1 1,5B (fp16) | 4,40 | 27 s | ~12 min |
+| (a) | ft-v2 1,5B (fp16) | ~4,4 (estimado) | ~30 s | ~12 min |
+| (a) | base 7B (nf4) | 13,5 | 1,9 min | ~36 min |
+| (a) | base 14B (nf4) | 24,0 | 4,1 min | ~64 min |
+| (a) | instalação, clone e banco | | | ~5 min |
+| **(a)** | | | | **~2,4 h** (pessimista ~3,1 h) |
+| (b) | base 32B (nf4, 2 T4) | 36,8 | 9,6 min | ~102 min |
+| (b) | instalação, clone e banco | | | ~5 min |
+| **(b)** | | | | **~1,8 h** (pessimista ~2,4 h) |
+| **Total** | | | | **~4,2 h de cota** (pessimista ~5,5 h) |
+
+Cabe na faixa de 4 a 6 h do plano (seção 6) e no limite de 12 h por sessão. Os dois
+kernels podem rodar ao mesmo tempo, se a conta tiver 2 sessões de GPU livres; senão, um
+depois do outro. O `TIME_BUDGET_32B_H = 4` dá folga de ~2× sobre a estimativa do 32B; se
+estourar, ele para com o que já fez e o run-info registra (`stopped_reason`).
+
+### Passos 👤 (PowerShell, na raiz do repositório)
+
+> **Regra 5:** executar no Kaggle exige a aprovação da Isabela.
+
+```powershell
+# 1. main atualizada (com o M17 já no merge)
+git switch main
+git pull
+
+# 2. conferir a 1ª célula: o commit do adapter v2 já vem preenchido, e PART = "a"
+$nb = (Resolve-Path notebooks/06_final_v2.ipynb).Path
+Select-String -Path $nb -Pattern 'FT2_ADAPTER_REVISION = |PART = '
+#    deve mostrar FT2_ADAPTER_REVISION = \"beeb19b5b4331ff048c6be0f03b9d53476d509ab\"
+
+# 3. (opcional, recomendado) ensaio de ~15 min: LIMIT = 3 na 1ª célula, push do (a),
+#    conferir o log e os 10 JSONL, e voltar para LIMIT = None (sem commitar o ensaio).
+
+# 4. kernel (a): PART = "a" (o padrão); cria o kernel privado na 1ª vez
+kaggle kernels push -p notebooks/kaggle/final-v2a --accelerator NvidiaTeslaT4
+
+# 5. kernel (b): troca PART para "b", push com GPU T4 x2, e volta PART para "a"
+$text = [IO.File]::ReadAllText($nb)
+[IO.File]::WriteAllText($nb, $text.Replace('PART = \"a\"', 'PART = \"b\"'))
+Select-String -Path $nb -Pattern 'PART = '      # deve mostrar PART = \"b\"
+kaggle kernels push -p notebooks/kaggle/final-v2b --accelerator NvidiaTeslaT4
+[IO.File]::WriteAllText($nb, $text)             # volta para PART = "a"
+
+# 6. acompanhar até COMPLETE (ou ERROR); repita de tempos em tempos (~2,4 h e ~1,8 h)
+kaggle kernels status belasoares/tanque-cheio-final-v2a
+kaggle kernels status belasoares/tanque-cheio-final-v2b
+
+# 7. baixar as saídas (JSONL, run-info e o log) em pastas fora do git
+kaggle kernels output belasoares/tanque-cheio-final-v2a -p kaggle-final-a -o
+kaggle kernels output belasoares/tanque-cheio-final-v2b -p kaggle-final-b -o
+Get-ChildItem kaggle-final-a, kaggle-final-b
+
+# 8. copiar as previsões e os run-info do teste para results/predictions/
+Copy-Item kaggle-final-a/*__test.jsonl, kaggle-final-a/run-info__*__test.json results/predictions/
+Copy-Item kaggle-final-b/*__test.jsonl, kaggle-final-b/run-info__*__test.json results/predictions/
+
+# 9. branch, commit e push (o notebook volta com PART = "a"; não precisa ir no commit)
+git switch -c m17-results
+git add results/predictions/*__test.jsonl results/predictions/run-info__*__test.json
+git commit -m "chore(results): previsões do teste final v2 (M17)"
+git push -u origin m17-results
+```
+
+`--accelerator NvidiaTeslaT4` é o "GPU T4 ×2" da Kaggle CLI (o mesmo do
+`machine_shape` dos dois `kernel-metadata.json`); no kernel (a), o notebook usa só a 1ª
+GPU. Pela interface web: importe o notebook, *Accelerator → GPU T4 x2*, *Internet → On*,
+ajuste `PART` na 1ª célula e *Save Version → Save & Run All*.
+
+Esperado: 10 JSONL do (a) (`<sistema>__test.jsonl` e `<sistema>+retry__test.jsonl` dos 5
+sistemas) e 2 do (b), cada um com 150 linhas, e um `run-info` para cada. Depois
+do push, abra o PR (ou avise o agente): a pontuação (`check-metrics --write`), o relatório
+(`tanque eval report`) e o gráfico (`uv sync --group chart` e `tanque eval chart`, que
+grava `results/ex-vs-cost.png`) são feitos pelo agente, e o CI confere os três. **Não**
+rode `tanque eval score` por conta própria. Se o status for `ERROR`, o log está em
+`kaggle-final-a/*.log` ou `kaggle-final-b/*.log`.
+
+**Se parar no meio** (sessão caiu, limite de tempo): no editor do kernel, **Add Input →
+Notebook Output Files** com a versão anterior do mesmo kernel e, na 1ª célula,
+`RESUME_DIR = "/kaggle/input/tanque-cheio-final-v2a"` (ou `-v2b`; confira o caminho no
+painel *Input*). *Save & Run All*: os itens já prontos são pulados. Volte depois para
+`RESUME_DIR = None`.
 
 ## Publicação (M8)
 

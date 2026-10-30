@@ -87,49 +87,6 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.13,
       "valid_sql_rate": 0.2832
-    },
-    "test": {
-      "blocked_rate": 0.0333,
-      "cost_per_1k_usd": 0.0,
-      "dataset": "test.jsonl",
-      "ex": 0.12,
-      "ex_by_difficulty": {
-        "dificil": {
-          "ex": 0.0,
-          "ex_relaxed": 0.0,
-          "n": 40
-        },
-        "facil": {
-          "ex": 0.28,
-          "ex_relaxed": 0.3,
-          "n": 50
-        },
-        "medio": {
-          "ex": 0.0667,
-          "ex_relaxed": 0.0667,
-          "n": 60
-        }
-      },
-      "ex_ci95": [
-        0.0733,
-        0.1733
-      ],
-      "ex_relaxed": 0.1267,
-      "ex_relaxed_ci95": [
-        0.08,
-        0.18
-      ],
-      "hardware": [
-        "kaggle-t4"
-      ],
-      "latency_ms": {
-        "mean": 2979.0,
-        "p50": 2637.5,
-        "p95": 6518.3
-      },
-      "n": 150,
-      "n_missing": 0,
-      "valid_sql_rate": 0.22
     }
   },
   "base-qwen2.5-coder-1.5b-instruct+retry": {
@@ -821,16 +778,6 @@
       "mcnemar_p": 1.0,
       "n": 113,
       "split": "dev2"
-    },
-    {
-      "a": "base-qwen2.5-coder-1.5b-instruct",
-      "a_only": 0,
-      "b": "ft-qwen2.5-coder-1.5b-instruct",
-      "b_only": 96,
-      "delta_ex": 0.64,
-      "mcnemar_p": 2.524e-29,
-      "n": 150,
-      "split": "test"
     }
   ],
   "ft-qwen2.5-coder-1.5b-instruct": {
@@ -921,49 +868,6 @@
       "n_missing": 0,
       "peak_gpu_mem_gib": 3.09,
       "valid_sql_rate": 0.9646
-    },
-    "test": {
-      "blocked_rate": 0.02,
-      "cost_per_1k_usd": 0.0,
-      "dataset": "test.jsonl",
-      "ex": 0.76,
-      "ex_by_difficulty": {
-        "dificil": {
-          "ex": 0.475,
-          "ex_relaxed": 0.575,
-          "n": 40
-        },
-        "facil": {
-          "ex": 0.98,
-          "ex_relaxed": 0.98,
-          "n": 50
-        },
-        "medio": {
-          "ex": 0.7667,
-          "ex_relaxed": 0.8833,
-          "n": 60
-        }
-      },
-      "ex_ci95": [
-        0.6867,
-        0.8267
-      ],
-      "ex_relaxed": 0.8333,
-      "ex_relaxed_ci95": [
-        0.7733,
-        0.8933
-      ],
-      "hardware": [
-        "kaggle-t4"
-      ],
-      "latency_ms": {
-        "mean": 3764.3,
-        "p50": 3726.5,
-        "p95": 8171.8
-      },
-      "n": 150,
-      "n_missing": 0,
-      "valid_sql_rate": 0.96
     }
   },
   "ft-qwen2.5-coder-1.5b-instruct+retry": {
