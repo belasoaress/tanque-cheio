@@ -58,6 +58,8 @@ Dev ampliado da v2 (D30), usado nas decisões da v2; não é o resultado final.
 | `base-qwen2.5-coder-32b-instruct+retry` | dev2 | 113 | 74,3% | 66,4–82,3% | 77,9% | 69,9–85,0% | 92,3% | 82,3% | 50,0% | 96,5% | 3,5% | 30.102 | 86.583 | 2 | 10,8 | 7,1498* |
 | `ft-qwen2.5-coder-1.5b-instruct` | dev2 | 113 | 74,3% | 66,4–82,3% | 78,8% | 70,8–85,8% | 97,4% | 76,5% | 50,0% | 96,5% | 0,0% | 4.077 | 8.619 | 1 | 3,1 | 0,4042* |
 | `ft-qwen2.5-coder-1.5b-instruct+retry` | dev2 | 113 | 74,3% | 66,4–82,3% | 78,8% | 70,8–85,8% | 97,4% | 76,5% | 50,0% | 97,4% | 0,0% | 4.101 | 8.652 | 1 | 3,1 | 0,4218* |
+| `ft2-qwen2.5-coder-1.5b-instruct` | dev2 | 113 | 96,5% | 92,9–99,1% | 97,4% | 93,8–100,0% | 100,0% | 94,1% | 95,0% | 100,0% | 0,0% | 3.929 | 7.833 | 1 | 3,1 | 0,3865* |
+| `ft2-qwen2.5-coder-1.5b-instruct+retry` | dev2 | 113 | 96,5% | 92,9–99,1% | 97,4% | 93,8–100,0% | 100,0% | 94,1% | 95,0% | 100,0% | 0,0% | 3.929 | 7.833 | 1 | 3,1 | 0,3865* |
 
 Comparações pareadas no dev2:
 
@@ -68,16 +70,22 @@ Comparações pareadas no dev2:
 | `base-qwen2.5-coder-1.5b-instruct` | `base-qwen2.5-coder-14b-instruct` | 113 | 11,5% | 40,7% | +29,2 p.p. | 1 | 34 | < 0,001 |
 | `base-qwen2.5-coder-1.5b-instruct` | `base-qwen2.5-coder-32b-instruct` | 113 | 11,5% | 72,6% | +61,1 p.p. | 0 | 69 | < 0,001 |
 | `base-qwen2.5-coder-1.5b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 113 | 11,5% | 74,3% | +62,8 p.p. | 0 | 71 | < 0,001 |
+| `base-qwen2.5-coder-1.5b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct` | 113 | 11,5% | 96,5% | +85,0 p.p. | 0 | 96 | < 0,001 |
 | `base-qwen2.5-coder-7b-instruct` | `base-qwen2.5-coder-7b-instruct+retry` | 113 | 31,9% | 38,0% | +6,2 p.p. | 0 | 7 | 0,016 |
 | `base-qwen2.5-coder-7b-instruct` | `base-qwen2.5-coder-14b-instruct` | 113 | 31,9% | 40,7% | +8,8 p.p. | 10 | 20 | 0,099 |
 | `base-qwen2.5-coder-7b-instruct` | `base-qwen2.5-coder-32b-instruct` | 113 | 31,9% | 72,6% | +40,7 p.p. | 5 | 51 | < 0,001 |
 | `base-qwen2.5-coder-7b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 113 | 31,9% | 74,3% | +42,5 p.p. | 6 | 54 | < 0,001 |
+| `base-qwen2.5-coder-7b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct` | 113 | 31,9% | 96,5% | +64,6 p.p. | 1 | 74 | < 0,001 |
 | `base-qwen2.5-coder-14b-instruct` | `base-qwen2.5-coder-14b-instruct+retry` | 113 | 40,7% | 46,0% | +5,3 p.p. | 0 | 6 | 0,031 |
 | `base-qwen2.5-coder-14b-instruct` | `base-qwen2.5-coder-32b-instruct` | 113 | 40,7% | 72,6% | +31,9 p.p. | 1 | 37 | < 0,001 |
 | `base-qwen2.5-coder-14b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 113 | 40,7% | 74,3% | +33,6 p.p. | 6 | 44 | < 0,001 |
+| `base-qwen2.5-coder-14b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct` | 113 | 40,7% | 96,5% | +55,8 p.p. | 0 | 63 | < 0,001 |
 | `base-qwen2.5-coder-32b-instruct` | `base-qwen2.5-coder-32b-instruct+retry` | 113 | 72,6% | 74,3% | +1,8 p.p. | 0 | 2 | 0,500 |
 | `base-qwen2.5-coder-32b-instruct` | `ft-qwen2.5-coder-1.5b-instruct` | 113 | 72,6% | 74,3% | +1,8 p.p. | 15 | 17 | 0,860 |
+| `base-qwen2.5-coder-32b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct` | 113 | 72,6% | 96,5% | +23,9 p.p. | 2 | 29 | < 0,001 |
 | `ft-qwen2.5-coder-1.5b-instruct` | `ft-qwen2.5-coder-1.5b-instruct+retry` | 113 | 74,3% | 74,3% | ±0,0 p.p. | 0 | 0 | 1,000 |
+| `ft-qwen2.5-coder-1.5b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct` | 113 | 74,3% | 96,5% | +22,1 p.p. | 2 | 27 | < 0,001 |
+| `ft2-qwen2.5-coder-1.5b-instruct` | `ft2-qwen2.5-coder-1.5b-instruct+retry` | 113 | 96,5% | 96,5% | ±0,0 p.p. | 0 | 0 | 1,000 |
 
 † Latência medida com o adapter LoRA sem fundir (`PeftModel`, run-info com `adapter_merged` ausente ou falso): não é comparável à do base. No teste o adapter é fundido antes de gerar.
 
