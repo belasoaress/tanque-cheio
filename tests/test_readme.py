@@ -1,10 +1,10 @@
-"""Os números do README e do card v2 batem com results/report.md (M18, R23).
+"""Os números do README, do card v2 e do artigo batem com results/report.md (M18, M20).
 
-O relatório é gerado e conferido pelo CI (`tanque eval report --check`). O README e o
-card do adapter v2 copiam números dele à mão; este teste garante que a cópia não
-desatualizou: a tabela de resultados do README tem de ser igual, célula a célula, à
-tabela principal do relatório, e todo percentual com uma casa decimal citado nos dois
-textos tem de aparecer no relatório.
+O relatório é gerado e conferido pelo CI (`tanque eval report --check`). O README, o
+card do adapter v2 e o rascunho do artigo (`docs/article-draft.md`) copiam números dele
+à mão; este teste garante que a cópia não desatualizou: a tabela de resultados do README
+tem de ser igual, célula a célula, à tabela principal do relatório, e todo percentual
+com uma casa decimal citado nesses textos tem de aparecer no relatório.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 CARD_V2 = ROOT / "hf" / "model-v2" / "README.md"
+ARTICLE = ROOT / "docs" / "article-draft.md"
 REPORT = ROOT / "results" / "report.md"
 
 SYSTEM = re.compile(r"`([^`]+)`")
@@ -57,7 +58,7 @@ def test_readme_results_table_matches_report():
             assert row[col] == report_rows[system][col], (system, col)
 
 
-@pytest.mark.parametrize("path", [README, CARD_V2], ids=["readme", "card-v2"])
+@pytest.mark.parametrize("path", [README, CARD_V2, ARTICLE], ids=["readme", "card-v2", "article"])
 def test_percentages_come_from_report(path):
     report = REPORT.read_text(encoding="utf-8")
     text = path.read_text(encoding="utf-8")
