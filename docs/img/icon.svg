@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="tanque-cheio">
+  <title>tanque-cheio</title>
+  <rect width="512" height="512" rx="112" fill="#FFF7EC"/>
+  <g fill="none" stroke="#0B1F33" stroke-width="22" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="128" y="108" width="196" height="296" rx="28" fill="#E8590C"/>
+    <rect x="164" y="146" width="124" height="82" rx="14" fill="#FFF7EC"/>
+    <path d="M324 176 h44 a24 24 0 0 1 24 24 v150 a24 24 0 0 0 48 0 v-130 l-38 -44"/>
+    <line x1="104" y1="414" x2="348" y2="414"/>
+  </g>
+  <text x="226" y="202" text-anchor="middle" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="800" font-size="42" fill="#0B1F33">SQL</text>
+</svg>
