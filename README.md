@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/img/banner.svg" alt="tanque-cheio: pergunte em português, receba a SQL e a tabela. 80,7% no teste; 1,5B ≈ 32B; ~15× mais barato; US$ 0 de API." width="100%">
+</p>
+
 # tanque-cheio
 
 [![CI](https://github.com/belasoaress/tanque-cheio/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/belasoaress/tanque-cheio/actions/workflows/ci.yml)

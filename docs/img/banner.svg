@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="320" viewBox="0 0 1280 320" role="img" aria-labelledby="t d">
+  <title id="t">tanque-cheio</title>
+  <desc id="d">Perguntas em português viram SQL sobre os preços de combustíveis da ANP. Um modelo de 1,5B ajustado empata com um de 32B.</desc>
+  <rect width="1280" height="320" rx="24" fill="#FFF7EC"/>
+  <rect x="0" y="0" width="22" height="320" rx="11" fill="#E8590C"/>
+  <!-- bomba de combustível -->
+  <g transform="translate(110 70)" fill="none" stroke="#0B1F33" stroke-width="12" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="0" y="0" width="110" height="170" rx="16" fill="#E8590C"/>
+    <rect x="20" y="22" width="70" height="46" rx="8" fill="#FFF7EC"/>
+    <path d="M110 40 h26 a14 14 0 0 1 14 14 v86 a14 14 0 0 0 28 0 v-74 l-22 -26"/>
+    <line x1="-14" y1="176" x2="124" y2="176"/>
+  </g>
+  <text x="165" y="126" text-anchor="middle" font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-weight="800" font-size="22" fill="#0B1F33">SQL</text>
+  <!-- marca -->
+  <g font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif">
+    <text x="340" y="146" font-size="84" font-weight="800" fill="#0B1F33" letter-spacing="-2">tanque<tspan fill="#E8590C">-</tspan>cheio</text>
+    <text x="344" y="194" font-size="26" font-weight="500" fill="#33475B">Pergunte em português. Receba a SQL e a tabela.</text>
+    <text x="344" y="228" font-size="20" font-weight="400" fill="#5C7085">Preços de combustíveis da ANP · DuckDB · Qwen2.5-Coder-1.5B ajustado com QLoRA</text>
+  </g>
+  <g font-family="Inter, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="19" font-weight="700">
+    <rect x="344" y="254" width="184" height="38" rx="19" fill="#0B1F33"/>
+    <text x="436" y="279" text-anchor="middle" fill="#FFFFFF">80,7% no teste</text>
+    <rect x="540" y="254" width="200" height="38" rx="19" fill="none" stroke="#0B1F33" stroke-width="2"/>
+    <text x="640" y="279" text-anchor="middle" fill="#0B1F33">1,5B ≈ 32B</text>
+    <rect x="752" y="254" width="222" height="38" rx="19" fill="none" stroke="#E8590C" stroke-width="2"/>
+    <text x="863" y="279" text-anchor="middle" fill="#B5400A">~15× mais barato</text>
+    <rect x="986" y="254" width="170" height="38" rx="19" fill="none" stroke="#5C7085" stroke-width="2"/>
+    <text x="1071" y="279" text-anchor="middle" fill="#33475B">US$ 0 de API</text>
+  </g>
+</svg>
