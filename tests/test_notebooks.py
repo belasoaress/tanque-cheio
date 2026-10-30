@@ -23,7 +23,11 @@ KERNELS = {
     # v2 (M17): dois kernels do mesmo notebook, escolhidos por PART
     "final-v2a": ("belasoares/tanque-cheio-final-v2a", "06_final_v2.ipynb"),
     "final-v2b": ("belasoares/tanque-cheio-final-v2b", "06_final_v2.ipynb"),
+    # v2 (M19): fundir o adapter v2 e exportar o GGUF; CPU basta
+    "export-gguf": ("belasoares/tanque-cheio-export-gguf", "07_export_gguf.ipynb"),
 }
+# Kernels sem GPU (o resto roda numa sessão com T4).
+CPU_KERNELS = {"export-gguf"}
 PARAMS = {
     "01_bakeoff.ipynb": {"REPO_REF", "DATASET", "LIMIT", "CANDIDATES", "OUT_DIR"},
     "03_predict.ipynb": {
@@ -72,6 +76,23 @@ PARAMS = {
         "RESUME_DIR",
         "OUT_DIR",
     },
+    "07_export_gguf.ipynb": {
+        "REPO_REF",
+        "BASE_MODEL_ID",
+        "BASE_REVISION",
+        "ADAPTER_ID",
+        "ADAPTER_REVISION",
+        "LLAMA_CPP_REF",
+        "LLAMA_CPP_PYTHON",
+        "QUANT",
+        "GGUF_NAME",
+        "CHECK_DATASET",
+        "MAX_NEW_TOKENS",
+        "N_CTX",
+        "PUSH_TO_HUB",
+        "HF_REPO",
+        "OUT_DIR",
+    },
     "02_finetune.ipynb": {
         "REPO_REF",
         "CONFIG",
@@ -108,8 +129,11 @@ def test_kernel_metadata(folder):
     assert (meta_path.parent / meta["code_file"]).resolve() == (NOTEBOOKS / notebook).resolve()
     assert meta["language"] == "python" and meta["kernel_type"] == "notebook"
     assert meta["is_private"] is True  # público só no M6, com aprovação
-    assert meta["enable_gpu"] is True and meta["enable_internet"] is True
-    assert meta["machine_shape"] == "NvidiaTeslaT4"
+    assert meta["enable_internet"] is True
+    if folder in CPU_KERNELS:
+        assert meta["enable_gpu"] is False and "machine_shape" not in meta
+    else:
+        assert meta["enable_gpu"] is True and meta["machine_shape"] == "NvidiaTeslaT4"
 
 
 @pytest.mark.parametrize("name", sorted(PARAMS))
@@ -206,7 +230,8 @@ def test_finetune_notebook_uses_the_package_and_never_the_test_set():
 
 
 @pytest.mark.parametrize(
-    "name", ["02_finetune.ipynb", "04_test_predict.ipynb", "06_final_v2.ipynb"]
+    "name",
+    ["02_finetune.ipynb", "04_test_predict.ipynb", "06_final_v2.ipynb", "07_export_gguf.ipynb"],
 )
 def test_single_gpu_before_importing_torch(name):
     # O Kaggle pode dar 2 T4; o SFTTrainer recusa DataParallel, e no teste final os dois
@@ -225,6 +250,7 @@ def test_single_gpu_before_importing_torch(name):
         "04_test_predict.ipynb",
         "05_large_baselines.ipynb",
         "06_final_v2.ipynb",
+        "07_export_gguf.ipynb",
     ],
 )
 def test_adapter_notebooks_drop_torchao_and_fail_fast(name):
@@ -251,6 +277,7 @@ def locked_versions() -> dict[str, str]:
         ("04_test_predict.ipynb", {"transformers", "peft", "accelerate"}),
         ("05_large_baselines.ipynb", {"transformers", "peft", "accelerate", "bitsandbytes"}),
         ("06_final_v2.ipynb", {"transformers", "peft", "accelerate", "bitsandbytes"}),
+        ("07_export_gguf.ipynb", {"transformers", "peft", "accelerate", "sentencepiece"}),
     ],
 )
 def test_pins_match_the_lock_used_by_the_cpu_smoke_test(name, required):
@@ -507,3 +534,84 @@ def test_final_part_line_is_unique_for_the_powershell_edit():
     assert raw.count(f'FT2_ADAPTER_REVISION = \\"{revision}\\"') == 1
     readme = (NOTEBOOKS / "README.md").read_text(encoding="utf-8")
     assert FT2_REVISION in readme and "final-v2a" in readme and "final-v2b" in readme
+
+
+# --- 07_export_gguf (M19) ----------------------------------------------------------
+
+EXPORT = "07_export_gguf.ipynb"
+APP_DIR = config.resolve_path("app")
+
+
+def app_pins() -> dict[str, str]:
+    text = (APP_DIR / "requirements.txt").read_text(encoding="utf-8")
+    return dict(re.findall(r"^([a-z0-9-]+)==(\S+)$", text, re.MULTILINE))
+
+
+def test_export_parameters_defaults():
+    params = parameters(EXPORT)
+    assert params["REPO_REF"] == "main"
+    assert params["PUSH_TO_HUB"] is False  # publicar exige aprovação (regra 0.5)
+    assert params["HF_REPO"] == "belasoares/tanque-cheio-qwen2.5-coder-1.5b-gguf"
+    assert params["QUANT"] == "Q4_K_M"  # D36
+    assert params["CHECK_DATASET"] == "dev2"  # nunca o teste (regra 0.6)
+    assert params["MAX_NEW_TOKENS"] == 384 and params["N_CTX"] == 2048
+    assert params["OUT_DIR"] == "/kaggle/working"
+    # o mesmo modelo base e o mesmo adapter v2 do teste final (M17)
+    final = {m.get("adapter_id"): m for m in exec_parameters(FINAL)["MODELS"]}
+    ft2 = final[params["ADAPTER_ID"]]
+    assert params["BASE_MODEL_ID"] == ft2["model_id"]
+    assert params["BASE_REVISION"] == ft2["revision"]
+    assert params["ADAPTER_REVISION"] == FT2_REVISION
+    # o conversor e o quantizador são do llama.cpp que roda no app
+    assert params["LLAMA_CPP_PYTHON"] == app_pins()["llama-cpp-python"]
+    assert re.fullmatch(r"b\d+", params["LLAMA_CPP_REF"])
+    assert re.fullmatch(r"[0-9a-f]{40}", params["LLAMA_CPP_COMMIT_EXPECTED"])
+
+
+def test_export_gguf_name_is_the_one_the_app_downloads():
+    params = parameters(EXPORT)
+    demo = (APP_DIR / "tanque_demo.py").read_text(encoding="utf-8")
+    assert f'GGUF_FILE = "{params["GGUF_NAME"]}"' in demo
+    assert f'GGUF_REPO = "{params["HF_REPO"]}"' in demo
+
+
+def test_export_notebook_flow():
+    text = notebook_text(EXPORT)
+    assert "git+{REPO_URL}@{REPO_REF}" in text
+    assert 'REPO_URL = "https://github.com/belasoaress/tanque-cheio"' in text
+    assert 'os.environ["TANQUE_ROOT"] = REPO_DIR' in text
+    assert "test.jsonl" not in text
+    assert 'f"datasets/{CHECK_DATASET}.jsonl"' in text
+    assert "merge_adapter=True" in text and "safe_serialization=True" in text
+    assert "convert_hf_to_gguf.py" in text and '"--outtype"' in text
+    assert "llama_cpp.llama_model_quantize(" in text
+    assert "--only-binary=llama-cpp-python" in text
+    assert "tanque_demo.llama_generator(" in text  # o mesmo gerador do app
+    assert "results_match(" in text and '"same_result"' in text
+    assert 'UserSecretsClient().get_secret("HF_TOKEN")' in text
+    assert "if PUSH_TO_HUB:" in text
+    cells = code_cells(EXPORT)
+    order = [
+        next(i for i, c in enumerate(cells) if marker in c)
+        for marker in (
+            "local.load_model(",
+            "convert_hf_to_gguf.py",
+            "llama_model_quantize(",
+            "Llama(model_path",
+            "upload_folder(",
+        )
+    ]
+    assert order == sorted(order)
+    build = next(i for i, c in enumerate(cells) if '"--from-parquet"' in c)
+    assert build < order[3]
+    for cell in load_notebook(EXPORT)["cells"]:
+        if cell["cell_type"] == "code":
+            assert cell["outputs"] == [] and cell["execution_count"] is None
+
+
+def test_export_push_line_is_unique_for_the_powershell_edit():
+    # docs/demo.md liga a publicação com .Replace no JSON; a linha aparece 1 vez
+    raw = (NOTEBOOKS / EXPORT).read_text(encoding="utf-8")
+    assert raw.count("PUSH_TO_HUB = False") == 1
+    demo = config.resolve_path("docs/demo.md").read_text(encoding="utf-8")
+    assert "PUSH_TO_HUB = False" in demo and "PUSH_TO_HUB = True" in demo
